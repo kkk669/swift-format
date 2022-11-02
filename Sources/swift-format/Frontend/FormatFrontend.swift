@@ -45,11 +45,18 @@ class FormatFrontend: Frontend {
         // No diagnostics should be emitted in this mode.
         return
       }
+#if !os(WASI)
       self.diagnosticsEngine.consumeParserDiagnostic(diagnostic, location)
+#endif
     }
+#if !os(WASI)
     var stdoutStream = FileHandleTextOutputStream(FileHandle.standardOutput)
+#else
+    var stdoutStream = FileHandleTextOutputStream(FileHandle.standardError)
+#endif
     do {
       if inPlace {
+#if !os(WASI)
         var buffer = ""
         try formatter.format(
           source: source,
@@ -61,6 +68,9 @@ class FormatFrontend: Frontend {
           let bufferData = buffer.data(using: .utf8)!  // Conversion to UTF-8 cannot fail
           try bufferData.write(to: url, options: .atomic)
         }
+#else
+        fatalError("not implemented")
+#endif
       } else {
         try formatter.format(
           source: source,

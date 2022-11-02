@@ -20,8 +20,10 @@ class Frontend {
   /// Represents a file to be processed by the frontend and any file-specific options associated
   /// with it.
   final class FileToProcess {
+#if !os(WASI)
     /// An open file handle to the source code of the file.
     private let fileHandle: FileHandle
+#endif
 
     /// A file URL representing the path to the source file being processed.
     ///
@@ -36,6 +38,7 @@ class Frontend {
     /// The configuration that should applied for this file.
     let configuration: Configuration
 
+#if !os(WASI)
     /// Returns the string contents of the file.
     ///
     /// The contents of the file are assumed to be UTF-8 encoded. If there is an error decoding the
@@ -51,10 +54,21 @@ class Frontend {
       self.url = url
       self.configuration = configuration
     }
+#else
+    let sourceText: String?
+
+    init(source: String, url: URL, configuration: Configuration) {
+      self.sourceText = source
+      self.url = url
+      self.configuration = configuration
+    }
+#endif
   }
 
+#if !os(WASI)
   /// Prints diagnostics to standard error, optionally with color.
   final let diagnosticPrinter: StderrDiagnosticPrinter
+#endif
 
   /// The diagnostic engine to which warnings and errors will be emitted.
   final let diagnosticsEngine: UnifiedDiagnosticsEngine
@@ -62,8 +76,10 @@ class Frontend {
   /// Options that apply during formatting or linting.
   final let lintFormatOptions: LintFormatOptions
 
+#if !os(WASI)
   /// Loads formatter configuration files.
   final var configurationLoader = ConfigurationLoader()
+#endif
 
   /// Advanced options that are useful for developing/debugging but otherwise not meant for general
   /// use.
@@ -80,10 +96,14 @@ class Frontend {
   init(lintFormatOptions: LintFormatOptions) {
     self.lintFormatOptions = lintFormatOptions
 
+#if !os(WASI)
     self.diagnosticPrinter = StderrDiagnosticPrinter(
       colorMode: lintFormatOptions.colorDiagnostics.map { $0 ? .on : .off } ?? .auto)
     self.diagnosticsEngine =
       UnifiedDiagnosticsEngine(diagnosticsHandlers: [diagnosticPrinter.printDiagnostic])
+#else
+    self.diagnosticsEngine = UnifiedDiagnosticsEngine()
+#endif
   }
 
   /// Runs the linter or formatter over the inputs.
@@ -91,9 +111,13 @@ class Frontend {
     if lintFormatOptions.paths.isEmpty {
       processStandardInput()
     } else {
+#if !os(WASI)
       processURLs(
         lintFormatOptions.paths.map(URL.init(fileURLWithPath:)),
         parallel: lintFormatOptions.parallel)
+#else
+      fatalError("not implemented")
+#endif
     }
   }
 
@@ -109,6 +133,7 @@ class Frontend {
 
   /// Processes source content from standard input.
   private func processStandardInput() {
+#if !os(WASI)
     guard let configuration = configuration(
       at: lintFormatOptions.configurationPath.map(URL.init(fileURLWithPath:)),
       orInferredFromSwiftFileAt: nil)
@@ -121,9 +146,16 @@ class Frontend {
       fileHandle: FileHandle.standardInput,
       url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
       configuration: configuration)
+#else
+    let fileToProcess = FileToProcess(
+      source: "struct Foo { var bar:Int=4}",
+      url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
+      configuration: Configuration())
+#endif
     processFile(fileToProcess)
   }
 
+#if !os(WASI)
   /// Processes source content from a list of files and/or directories provided as file URLs.
   private func processURLs(_ urls: [URL], parallel: Bool) {
     precondition(
@@ -139,7 +171,9 @@ class Frontend {
       FileIterator(urls: urls).lazy.compactMap(openAndPrepareFile).forEach(processFile)
     }
   }
+#endif
 
+#if !os(WASI)
   /// Read and prepare the file at the given path for processing, optionally synchronizing
   /// diagnostic output.
   private func openAndPrepareFile(at url: URL) -> FileToProcess? {
@@ -160,7 +194,9 @@ class Frontend {
 
     return FileToProcess(fileHandle: sourceFile, url: url, configuration: configuration)
   }
+#endif
 
+#if !os(WASI)
   /// Returns the configuration that applies to the given `.swift` source file, when an explicit
   /// configuration path is also perhaps provided.
   ///
@@ -208,4 +244,5 @@ class Frontend {
     // default configuration.
     return Configuration()
   }
+#endif
 }

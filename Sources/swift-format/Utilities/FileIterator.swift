@@ -22,8 +22,10 @@ struct FileIterator: Sequence, IteratorProtocol {
   /// Iterator for the list of URLs.
   var urlIterator: Array<URL>.Iterator
 
+#if !os(WASI)
   /// Iterator for recursing through directories.
   var dirIterator: FileManager.DirectoryEnumerator? = nil
+#endif
 
   /// The current working directory of the process, which is used to relativize URLs of files found
   /// during iteration.
@@ -52,6 +54,7 @@ struct FileIterator: Sequence, IteratorProtocol {
   mutating func next() -> URL? {
     var output: URL? = nil
     while output == nil {
+#if !os(WASI)
       // Check if we're recursing through a directory.
       if dirIterator != nil {
         output = nextInDirectory()
@@ -68,6 +71,10 @@ struct FileIterator: Sequence, IteratorProtocol {
           output = next
         }
       }
+#else
+      guard let next = urlIterator.next() else { return nil }
+      output = next
+#endif
       if let out = output, visited.contains(out.absoluteURL.standardized.path) {
         output = nil
       }
@@ -78,6 +85,7 @@ struct FileIterator: Sequence, IteratorProtocol {
     return output
   }
 
+#if !os(WASI)
   /// Use the FileManager API to recurse through directories and emit .swift file paths.
   private mutating func nextInDirectory() -> URL? {
     var output: URL? = nil
@@ -106,4 +114,5 @@ struct FileIterator: Sequence, IteratorProtocol {
     }
     return output
   }
+#endif
 }

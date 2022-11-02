@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WASI)
+
 import Dispatch
 import Foundation
 import TSCBasic
@@ -90,3 +92,5 @@ final class StderrDiagnosticPrinter {
     return "\u{001b}[\(ansiSGR.rawValue)m"
   }
 }
+
+#endif

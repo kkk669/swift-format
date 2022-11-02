@@ -44,6 +44,7 @@ public final class SwiftFormatter {
     self.findingConsumer = findingConsumer
   }
 
+#if !os(WASI)
   /// Formats the Swift code at the given file URL and writes the result to an output stream.
   ///
   /// This form of the `format` function automatically folds expressions using the default operator
@@ -80,6 +81,7 @@ public final class SwiftFormatter {
       syntax: sourceFile, operatorTable: .standardOperators, assumingFileURL: url, source: source,
       to: &outputStream)
   }
+#endif
 
   /// Formats the given Swift source code and writes the result to an output stream.
   ///

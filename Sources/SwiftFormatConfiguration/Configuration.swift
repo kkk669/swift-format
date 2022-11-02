@@ -147,11 +147,13 @@ public struct Configuration: Codable, Equatable {
     self.version = highestSupportedConfigurationVersion
   }
 
+#if !os(WASI)
   /// Constructs a Configuration by loading it from a configuration file.
   public init(contentsOf url: URL) throws {
     let data = try Data(contentsOf: url)
     self = try JSONDecoder().decode(Configuration.self, from: data)
   }
+#endif
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -233,6 +235,7 @@ public struct Configuration: Codable, Equatable {
 
   /// Returns the URL of the configuration file that applies to the given file or directory.
   public static func url(forConfigurationFileApplyingTo url: URL) -> URL? {
+#if !os(WASI)
     // Despite the variable's name, this value might start out first as a file path (the path to a
     // source file being formatted). However, it will immediately have its basename removed in the
     // loop below, and from then on serve as a directory path only.
@@ -254,6 +257,9 @@ public struct Configuration: Codable, Equatable {
     } while candidateDirectory.path != "/"
 
     return nil
+#else
+    return url.absoluteURL.standardized.appendingPathComponent(".swift-format")
+#endif
   }
 }
 

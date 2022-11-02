@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WASI)
+
 import Foundation
 import SwiftFormatConfiguration
 
@@ -47,3 +49,5 @@ struct ConfigurationLoader {
     return configuration
   }
 }
+
+#endif

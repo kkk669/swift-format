@@ -13,8 +13,11 @@
 import SwiftFormatCore
 import SwiftSyntax
 import SwiftDiagnostics
+#if !os(WASI)
 import TSCBasic
+#endif
 
+#if !os(WASI)
 /// Diagnostic data that retains the separation of a finding category (if present) from the rest of
 /// the message, allowing diagnostic printers that want to print those values separately to do so.
 struct UnifiedDiagnosticData: DiagnosticData {
@@ -38,7 +41,9 @@ struct UnifiedDiagnosticData: DiagnosticData {
     self.message = message
   }
 }
+#endif
 
+#if !os(WASI)
 /// Unifies the handling of findings from the linter, parsing errors from the syntax parser, and
 /// generic errors from the frontend so that they are treated uniformly by the underlying
 /// diagnostics engine from the `swift-tools-support-core` package.
@@ -149,3 +154,10 @@ final class UnifiedDiagnosticsEngine {
     }
   }
 }
+#else
+final class UnifiedDiagnosticsEngine {
+  func emitError(_ message: String, location: SourceLocation? = nil) {
+    print(message)
+  }
+}
+#endif

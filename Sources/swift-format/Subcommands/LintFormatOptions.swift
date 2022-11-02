@@ -84,6 +84,7 @@ struct LintFormatOptions: ParsableArguments {
       throw ValidationError("'--assume-filename' is only valid when reading from stdin")
     }
 
+#if !os(WASI)
     if !paths.isEmpty && !recursive {
       for path in paths {
         var isDir: ObjCBool = false
@@ -97,5 +98,6 @@ struct LintFormatOptions: ParsableArguments {
         }
       }
     }
+#endif
   }
 }

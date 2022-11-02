@@ -45,6 +45,7 @@ public final class SwiftLinter {
     self.findingConsumer = findingConsumer
   }
 
+#if !os(WASI)
   /// Lints the Swift code at the given file URL.
   ///
   /// This form of the `lint` function automatically folds expressions using the default operator
@@ -77,6 +78,7 @@ public final class SwiftLinter {
     try lint(
       syntax: sourceFile, operatorTable: .standardOperators, assumingFileURL: url, source: source)
   }
+#endif
 
   /// Lints the given Swift source code.
   ///

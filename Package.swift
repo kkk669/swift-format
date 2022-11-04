@@ -182,11 +182,10 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
       url: "https://github.com/apple/swift-argument-parser.git",
       branch: "main"
     ),
-    // .package(
-    //   url: "https://github.com/apple/swift-syntax.git",
-    //   branch: "main"
-    // ),
-    .package(path: "../swift-syntax"),
+    .package(
+      url: "https://github.com/kkk669/swift-syntax.git",
+      branch: "wasm32-wasi"
+    ),
     // .package(
     //   url: "https://github.com/apple/swift-tools-support-core.git",
     //   branch: "main"

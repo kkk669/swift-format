@@ -109,7 +109,12 @@ let package = Package(
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
-        // .product(name: "TSCBasic", package: "swift-tools-support-core"),
+        .product(
+          name: "TSCBasic",
+          package: "swift-tools-support-core",
+          // all except .wasi
+          condition: .when(platforms: [.iOS, .macOS, .tvOS, .watchOS, .macCatalyst, .driverKit, .android, .linux, .windows])
+        ),
       ]
     ),
 
@@ -187,10 +192,10 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
       url: "https://github.com/kkk669/swift-syntax.git",
       branch: "wasm32-wasi"
     ),
-    // .package(
-    //   url: "https://github.com/apple/swift-tools-support-core.git",
-    //   branch: "main"
-    // ),
+    .package(
+      url: "https://github.com/apple/swift-tools-support-core.git",
+      branch: "main"
+    ),
   ]
 } else {
   package.dependencies += [

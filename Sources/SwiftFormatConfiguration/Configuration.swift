@@ -255,11 +255,9 @@ public struct Configuration: Codable, Equatable {
         return candidateFile
       }
     } while candidateDirectory.path != "/"
+#endif
 
     return nil
-#else
-    return url.absoluteURL.standardized.appendingPathComponent(".swift-format")
-#endif
   }
 }
 

@@ -26,9 +26,7 @@ struct FileIterator: Sequence, IteratorProtocol {
   /// Iterator for recursing through directories.
   var dirIterator: FileManager.DirectoryEnumerator? = nil
 #else
-  var dirIterator: OpaquePointer? = nil {
-    willSet { if let dp = dirIterator { closedir(dp) } }
-  }
+  var dirIterator: WASIDirectoryEnumerator? = nil
 #endif
 
   /// The current working directory of the process, which is used to relativize URLs of files found
@@ -74,13 +72,10 @@ struct FileIterator: Sequence, IteratorProtocol {
         if dirExists {
 #if !os(WASI)
           dirIterator = FileManager.default.enumerator(at: next, includingPropertiesForKeys: nil)
-          currentDirectory = next
 #else
-          if let dp = next.withUnsafeFileSystemRepresentation(opendir) {
-            dirIterator = dp
-            currentDirectory = next
-          }
+          dirIterator = WASIDirectoryEnumerator(at: next)
 #endif
+          currentDirectory = next
         } else {
           // We'll get here if the path is a file, or if it doesn't exist. In the latter case,
           // return the path anyway; we'll turn the error we get when we try to open the file into
@@ -105,18 +100,7 @@ struct FileIterator: Sequence, IteratorProtocol {
 #if !os(WASI)
       let itemOrNil = dirIterator?.nextObject() as? URL
 #else
-      let itemOrNil = dirIterator.flatMap { dp in
-        if let ep = readdir(dp) {
-          let filename = withUnsafeBytes(of: &ep.pointee.d_type) { rawPtr in
-            // UnsafeRawPointer of d_name
-            let d_namePtr = rawPtr.baseAddress! + MemoryLayout<UInt8>.stride
-            return String(cString: d_namePtr.assumingMemoryBound(to: CChar.self))
-          }
-          return currentDirectory.appendingPathComponent(filename)
-        } else {
-          return nil
-        }
-      }
+      let itemOrNil = dirIterator?.next()
 #endif
       if let item = itemOrNil {
         if item.lastPathComponent.hasSuffix(fileSuffix) {

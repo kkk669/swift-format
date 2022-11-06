@@ -50,7 +50,7 @@ class FormatFrontend: Frontend {
 #if !os(WASI)
     var stdoutStream = FileHandleTextOutputStream(FileHandle.standardOutput)
 #else
-    var stdoutStream = FileHandleTextOutputStream(FileHandle.standardError)
+    var stdoutStream = FileHandleTextOutputStream(FileHandle(fileDescriptor: fileno(stdout)))
 #endif
     do {
       if inPlace {

@@ -86,10 +86,8 @@ class Frontend {
   /// Options that apply during formatting or linting.
   final let lintFormatOptions: LintFormatOptions
 
-#if !os(WASI)
   /// Loads formatter configuration files.
   final var configurationLoader = ConfigurationLoader()
-#endif
 
   /// Advanced options that are useful for developing/debugging but otherwise not meant for general
   /// use.
@@ -135,7 +133,6 @@ class Frontend {
 
   /// Processes source content from standard input.
   private func processStandardInput() {
-#if !os(WASI)
     guard let configuration = configuration(
       at: lintFormatOptions.configurationPath.map(URL.init(fileURLWithPath:)),
       orInferredFromSwiftFileAt: nil)
@@ -144,19 +141,15 @@ class Frontend {
       return
     }
 
-    let fileToProcess = FileToProcess(
-      fileHandle: FileHandle.standardInput,
-      url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
-      configuration: configuration)
+#if !os(WASI)
+    let fileHandle = FileHandle.standardInput
 #else
-    // FIXME: load configuration file
-    let configuration = Configuration()
-
+    let fileHandle = FileHandle(fileDescriptor: fileno(stdin))
+#endif
     let fileToProcess = FileToProcess(
-      fileHandle: FileHandle(fileDescriptor: fileno(stdin)),
+      fileHandle: fileHandle,
       url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
       configuration: configuration)
-#endif
     processFile(fileToProcess)
   }
 
@@ -189,15 +182,6 @@ class Frontend {
         "Unable to open \(url.relativePath): file is not readable or does not exist")
       return nil
     }
-
-    guard
-      let configuration = configuration(
-        at: lintFormatOptions.configurationPath.map(URL.init(fileURLWithPath:)),
-        orInferredFromSwiftFileAt: url)
-    else {
-      // Already diagnosed in the called method.
-      return nil
-    }
 #else
     guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "rb") }) else {
       diagnosticsEngine.emitError(
@@ -211,14 +195,20 @@ class Frontend {
       return nil
     }
     let sourceFile = FileHandle(fileDescriptor: fd)
-    // FIXME: load configuration file
-    let configuration = Configuration()
 #endif
+
+    guard
+      let configuration = configuration(
+        at: lintFormatOptions.configurationPath.map(URL.init(fileURLWithPath:)),
+        orInferredFromSwiftFileAt: url)
+    else {
+      // Already diagnosed in the called method.
+      return nil
+    }
 
     return FileToProcess(fileHandle: sourceFile, url: url, configuration: configuration)
   }
 
-#if !os(WASI)
   /// Returns the configuration that applies to the given `.swift` source file, when an explicit
   /// configuration path is also perhaps provided.
   ///
@@ -266,5 +256,4 @@ class Frontend {
     // default configuration.
     return Configuration()
   }
-#endif
 }

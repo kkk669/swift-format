@@ -25,11 +25,15 @@ struct FileIterator: Sequence, IteratorProtocol {
 #if !os(WASI)
   /// Iterator for recursing through directories.
   var dirIterator: FileManager.DirectoryEnumerator? = nil
+#else
+  var dirIterator: OpaquePointer? = nil {
+    willSet { if let dp = dirIterator { closedir(dp) } }
+  }
 #endif
 
   /// The current working directory of the process, which is used to relativize URLs of files found
   /// during iteration.
-  let workingDirectory = URL(fileURLWithPath: ".")
+  let workingDirectory = URL(fileURLWithPath: ".", isDirectory: true)
 
   /// Keep track of the current directory we're recursing through.
   var currentDirectory = URL(fileURLWithPath: "")
@@ -54,16 +58,29 @@ struct FileIterator: Sequence, IteratorProtocol {
   mutating func next() -> URL? {
     var output: URL? = nil
     while output == nil {
-#if !os(WASI)
       // Check if we're recursing through a directory.
       if dirIterator != nil {
         output = nextInDirectory()
       } else {
         guard let next = urlIterator.next() else { return nil }
+#if !os(WASI)
         var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: next.path, isDirectory: &isDir), isDir.boolValue {
+        let dirExists = FileManager.default.fileExists(atPath: next.path, isDirectory: &isDir) && isDir.boolValue
+#else
+        var status = stat()
+        let retVal = next.withUnsafeFileSystemRepresentation({ stat($0, &status) })
+        let dirExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
+#endif
+        if dirExists {
+#if !os(WASI)
           dirIterator = FileManager.default.enumerator(at: next, includingPropertiesForKeys: nil)
           currentDirectory = next
+#else
+          if let dp = next.withUnsafeFileSystemRepresentation(opendir) {
+            dirIterator = dp
+            currentDirectory = next
+          }
+#endif
         } else {
           // We'll get here if the path is a file, or if it doesn't exist. In the latter case,
           // return the path anyway; we'll turn the error we get when we try to open the file into
@@ -71,10 +88,6 @@ struct FileIterator: Sequence, IteratorProtocol {
           output = next
         }
       }
-#else
-      guard let next = urlIterator.next() else { return nil }
-      output = next
-#endif
       if let out = output, visited.contains(out.absoluteURL.standardized.path) {
         output = nil
       }
@@ -85,17 +98,38 @@ struct FileIterator: Sequence, IteratorProtocol {
     return output
   }
 
-#if !os(WASI)
   /// Use the FileManager API to recurse through directories and emit .swift file paths.
   private mutating func nextInDirectory() -> URL? {
     var output: URL? = nil
     while output == nil {
-      if let item = dirIterator?.nextObject() as? URL {
+#if !os(WASI)
+      let itemOrNil = dirIterator?.nextObject() as? URL
+#else
+      let itemOrNil = dirIterator.flatMap { dp in
+        if let ep = readdir(dp) {
+          let filename = withUnsafeBytes(of: &ep.pointee.d_type) { rawPtr in
+            // UnsafeRawPointer of d_name
+            let d_namePtr = rawPtr.baseAddress! + MemoryLayout<UInt8>.stride
+            return String(cString: d_namePtr.assumingMemoryBound(to: CChar.self))
+          }
+          return currentDirectory.appendingPathComponent(filename)
+        } else {
+          return nil
+        }
+      }
+#endif
+      if let item = itemOrNil {
         if item.lastPathComponent.hasSuffix(fileSuffix) {
+#if !os(WASI)
           var isDir: ObjCBool = false
-          if FileManager.default.fileExists(atPath: item.path, isDirectory: &isDir)
+          let fileExists = FileManager.default.fileExists(atPath: item.path, isDirectory: &isDir)
             && !isDir.boolValue
-          {
+#else
+          var status = stat()
+          let retVal = item.withUnsafeFileSystemRepresentation({ stat($0, &status) })
+          let fileExists = retVal == 0 && (status.st_mode & S_IFMT) != S_IFDIR
+#endif
+          if fileExists {
             // We can't use the `.producesRelativePathURLs` enumeration option because it isn't
             // supported yet on Linux, so we need to relativize the URL ourselves.
             let relativePath =
@@ -114,5 +148,4 @@ struct FileIterator: Sequence, IteratorProtocol {
     }
     return output
   }
-#endif
 }

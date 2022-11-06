@@ -68,7 +68,7 @@ struct FileIterator: Sequence, IteratorProtocol {
         let dirExists = FileManager.default.fileExists(atPath: next.path, isDirectory: &isDir) && isDir.boolValue
 #else
         var status = stat()
-        let retVal = next.withUnsafeFileSystemRepresentation({ stat($0, &status) })
+        let retVal = next.withUnsafeFileSystemRepresentation { stat($0, &status) }
         let dirExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
 #endif
         if dirExists {
@@ -126,7 +126,7 @@ struct FileIterator: Sequence, IteratorProtocol {
             && !isDir.boolValue
 #else
           var status = stat()
-          let retVal = item.withUnsafeFileSystemRepresentation({ stat($0, &status) })
+          let retVal = item.withUnsafeFileSystemRepresentation { stat($0, &status) }
           let fileExists = retVal == 0 && (status.st_mode & S_IFMT) != S_IFDIR
 #endif
           if fileExists {

@@ -261,12 +261,12 @@ public struct Configuration: Codable, Equatable {
     // loop below, and from then on serve as a directory path only.
     var candidateDirectory = url.absoluteURL.standardized
 #if !os(WASI)
-    var isDirectoryObjC: ObjCBool = false
-    let directoryExists = FileManager.default.fileExists(atPath: candidateDirectory.path, isDirectory: &isDirectoryObjC)
-      && isDirectoryObjC.boolValue
+    var isDirectory: ObjCBool = false
+    let directoryExists = FileManager.default.fileExists(atPath: candidateDirectory.path, isDirectory: &isDirectory)
+      && isDirectory.boolValue
 #else
     var status = stat()
-    let retVal = candidateDirectory.withUnsafeFileSystemRepresentation({ stat($0, &status) })
+    let retVal = candidateDirectory.withUnsafeFileSystemRepresentation { stat($0, &status) }
     let directoryExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
 #endif
     if directoryExists {

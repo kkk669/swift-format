@@ -19,13 +19,8 @@ import SwiftSyntax
 /// The frontend for linting operations.
 class LintFrontend: Frontend {
   override func processFile(_ fileToProcess: FileToProcess) {
-#if !os(WASI)
     let linter = SwiftLinter(
       configuration: fileToProcess.configuration, findingConsumer: diagnosticsEngine.consumeFinding)
-#else
-    let linter = SwiftLinter(
-      configuration: fileToProcess.configuration, findingConsumer: { _ in })
-#endif
     linter.debugOptions = debugOptions
 
     let url = fileToProcess.url
@@ -43,9 +38,7 @@ class LintFrontend: Frontend {
             // No diagnostics should be emitted in this mode.
             return
           }
-#if !os(WASI)
           self.diagnosticsEngine.consumeParserDiagnostic(diagnostic, location)
-#endif
       }
 
     } catch SwiftFormatError.fileNotReadable {

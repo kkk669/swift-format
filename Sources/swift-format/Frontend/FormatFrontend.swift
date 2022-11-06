@@ -45,9 +45,7 @@ class FormatFrontend: Frontend {
         // No diagnostics should be emitted in this mode.
         return
       }
-#if !os(WASI)
       self.diagnosticsEngine.consumeParserDiagnostic(diagnostic, location)
-#endif
     }
 #if !os(WASI)
     var stdoutStream = FileHandleTextOutputStream(FileHandle.standardOutput)

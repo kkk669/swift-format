@@ -84,11 +84,17 @@ struct LintFormatOptions: ParsableArguments {
       throw ValidationError("'--assume-filename' is only valid when reading from stdin")
     }
 
-#if !os(WASI)
     if !paths.isEmpty && !recursive {
       for path in paths {
+#if !os(WASI)
         var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
+        let dirExists = FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
+#else
+        var status = stat()
+        let retVal = path.withCString { stat($0, &status) }
+        let dirExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
+#endif
+        if dirExists {
           throw ValidationError(
             """
             '\(path)' is a path to a directory, not a Swift source file.
@@ -98,6 +104,5 @@ struct LintFormatOptions: ParsableArguments {
         }
       }
     }
-#endif
   }
 }

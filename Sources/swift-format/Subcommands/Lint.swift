@@ -32,11 +32,9 @@ extension SwiftFormatCommand {
       let frontend = LintFrontend(lintFormatOptions: lintOptions)
       frontend.run()
 
-#if !os(WASI)
       if frontend.diagnosticsEngine.hasErrors || strict && frontend.diagnosticsEngine.hasWarnings {
         throw ExitCode.failure
       }
-#endif
     }
   }
 }

@@ -262,15 +262,14 @@ public struct Configuration: Codable, Equatable {
     var candidateDirectory = url.absoluteURL.standardized
 #if !os(WASI)
     var isDirectoryObjC: ObjCBool = false
-    let isDirectory = FileManager.default.fileExists(atPath: candidateDirectory.path, isDirectory: &isDirectoryObjC) && isDirectoryObjC.boolValue
+    let directoryExists = FileManager.default.fileExists(atPath: candidateDirectory.path, isDirectory: &isDirectoryObjC)
+      && isDirectoryObjC.boolValue
 #else
     var status = stat()
-    guard candidateDirectory.withUnsafeFileSystemRepresentation({ stat($0, &status) }) == 0 else {
-      return nil
-    }
-    let isDirectory = (status.st_mode & S_IFMT) == S_IFDIR
+    let retVal = candidateDirectory.withUnsafeFileSystemRepresentation({ stat($0, &status) })
+    let directoryExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
 #endif
-    if isDirectory {
+    if directoryExists {
       // If the path actually was a directory, append a fake basename so that the trimming code
       // below doesn't have to deal with the first-time special case.
       candidateDirectory.appendPathComponent("placeholder")

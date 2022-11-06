@@ -44,7 +44,6 @@ public final class SwiftFormatter {
     self.findingConsumer = findingConsumer
   }
 
-#if !os(WASI)
   /// Formats the Swift code at the given file URL and writes the result to an output stream.
   ///
   /// This form of the `format` function automatically folds expressions using the default operator
@@ -64,6 +63,7 @@ public final class SwiftFormatter {
     to outputStream: inout Output,
     parsingDiagnosticHandler: ((Diagnostic, SourceLocation) -> Void)? = nil
   ) throws {
+#if !os(WASI)
     guard FileManager.default.isReadableFile(atPath: url.path) else {
       throw SwiftFormatError.fileNotReadable
     }
@@ -72,6 +72,30 @@ public final class SwiftFormatter {
       throw SwiftFormatError.isDirectory
     }
     let source = try String(contentsOf: url, encoding: .utf8)
+#else
+    guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "rb") }) else {
+      throw SwiftFormatError.fileNotReadable
+    }
+    defer { fclose(fp) }
+    let fd = fileno(fp)
+    guard fd != -1 else {
+      throw SwiftFormatError.fileNotReadable
+    }
+    var status = stat()
+    guard fstat(fd, &status) == 0 else {
+      throw SwiftFormatError.fileNotReadable
+    }
+    let fileSize = Int(status.st_size)
+    var sourceBytes = [UInt8](unsafeUninitializedCapacity: fileSize) { _, initializedCount in
+      initializedCount += fileSize
+    }
+    guard fread(&sourceBytes, 1, fileSize, fp) == fileSize else {
+      throw SwiftFormatError.fileNotReadable
+    }
+    guard let source = String(bytes: sourceBytes, encoding: .utf8) else {
+      throw SwiftFormatError.fileNotReadable
+    }
+#endif
     let sourceFile = try parseAndEmitDiagnostics(
       source: source,
       operatorTable: .standardOperators,
@@ -81,7 +105,6 @@ public final class SwiftFormatter {
       syntax: sourceFile, operatorTable: .standardOperators, assumingFileURL: url, source: source,
       to: &outputStream)
   }
-#endif
 
   /// Formats the given Swift source code and writes the result to an output stream.
   ///

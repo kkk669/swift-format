@@ -56,7 +56,6 @@ class FormatFrontend: Frontend {
 #endif
     do {
       if inPlace {
-#if !os(WASI)
         var buffer = ""
         try formatter.format(
           source: source,
@@ -65,12 +64,26 @@ class FormatFrontend: Frontend {
           parsingDiagnosticHandler: diagnosticHandler)
 
         if buffer != source {
+#if !os(WASI)
           let bufferData = buffer.data(using: .utf8)!  // Conversion to UTF-8 cannot fail
           try bufferData.write(to: url, options: .atomic)
-        }
 #else
-        fatalError("not implemented")
+          let bufferBytes = Array(buffer.utf8)
+          guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "wb") }) else {
+            diagnosticsEngine.emitError(
+              "Unable to write to \(url.path): file is not writable or does not exist.")
+            return
+          }
+          defer { fclose(fp) }
+          bufferBytes.withUnsafeBytes { ptr in
+            guard fwrite(ptr.baseAddress!, 1, ptr.count, fp) == ptr.count else {
+              diagnosticsEngine.emitError(
+                "Unable to write to \(url.path): failed to write (errno: \(errno)).")
+              return
+            }
+          }
 #endif
+        }
       } else {
         try formatter.format(
           source: source,

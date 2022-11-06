@@ -20,10 +20,8 @@ class Frontend {
   /// Represents a file to be processed by the frontend and any file-specific options associated
   /// with it.
   final class FileToProcess {
-#if !os(WASI)
     /// An open file handle to the source code of the file.
     private let fileHandle: FileHandle
-#endif
 
     /// A file URL representing the path to the source file being processed.
     ///
@@ -38,15 +36,38 @@ class Frontend {
     /// The configuration that should applied for this file.
     let configuration: Configuration
 
-#if !os(WASI)
     /// Returns the string contents of the file.
     ///
     /// The contents of the file are assumed to be UTF-8 encoded. If there is an error decoding the
     /// contents, `nil` will be returned.
     lazy var sourceText: String? = {
+#if !os(WASI)
       let sourceData = fileHandle.readDataToEndOfFile()
       defer { fileHandle.closeFile() }
       return String(data: sourceData, encoding: .utf8)
+#else
+      guard let fp = fdopen(fileHandle.fileDescriptor, "rb") else {
+        return nil
+      }
+      defer { fclose(fp) }
+      var sourceBytes: [UInt8] = []
+      var tmpBuffer = [UInt8](repeating: 0, count: 1 << 12)
+      while true {
+        let n = fread(&tmpBuffer, 1, tmpBuffer.count, fp)
+        if n < 0 {
+          if errno == POSIXErrorCode.EINTR.rawValue { continue }
+          return nil
+        }
+        if n == 0 {
+          if ferror(fp) != 0 {
+            return nil
+          }
+          break
+        }
+        sourceBytes.append(contentsOf: tmpBuffer[..<n])
+      }
+      return String(bytes: sourceBytes, encoding: .utf8)
+#endif
     }()
 
     init(fileHandle: FileHandle, url: URL, configuration: Configuration) {
@@ -54,15 +75,6 @@ class Frontend {
       self.url = url
       self.configuration = configuration
     }
-#else
-    let sourceText: String?
-
-    init(source: String, url: URL, configuration: Configuration) {
-      self.sourceText = source
-      self.url = url
-      self.configuration = configuration
-    }
-#endif
   }
 
   /// Prints diagnostics to standard error, optionally with color.
@@ -105,13 +117,9 @@ class Frontend {
     if lintFormatOptions.paths.isEmpty {
       processStandardInput()
     } else {
-#if !os(WASI)
       processURLs(
         lintFormatOptions.paths.map(URL.init(fileURLWithPath:)),
         parallel: lintFormatOptions.parallel)
-#else
-      fatalError("not implemented")
-#endif
     }
   }
 
@@ -141,15 +149,17 @@ class Frontend {
       url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
       configuration: configuration)
 #else
+    // FIXME: load configuration file
+    let configuration = Configuration()
+
     let fileToProcess = FileToProcess(
-      source: "struct Foo { var bar:Int=4}",
+      fileHandle: FileHandle(fileDescriptor: fileno(stdin)),
       url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
-      configuration: Configuration())
+      configuration: configuration)
 #endif
     processFile(fileToProcess)
   }
 
-#if !os(WASI)
   /// Processes source content from a list of files and/or directories provided as file URLs.
   private func processURLs(_ urls: [URL], parallel: Bool) {
     precondition(
@@ -157,20 +167,23 @@ class Frontend {
       "processURLs(_:) should only be called when 'urls' is non-empty.")
 
     if parallel {
+#if !os(WASI)
       let filesToProcess = FileIterator(urls: urls).compactMap(openAndPrepareFile)
       DispatchQueue.concurrentPerform(iterations: filesToProcess.count) { index in
         processFile(filesToProcess[index])
       }
+#else
+      fatalError("not implemented")
+#endif
     } else {
       FileIterator(urls: urls).lazy.compactMap(openAndPrepareFile).forEach(processFile)
     }
   }
-#endif
 
-#if !os(WASI)
   /// Read and prepare the file at the given path for processing, optionally synchronizing
   /// diagnostic output.
   private func openAndPrepareFile(at url: URL) -> FileToProcess? {
+#if !os(WASI)
     guard let sourceFile = try? FileHandle(forReadingFrom: url) else {
       diagnosticsEngine.emitError(
         "Unable to open \(url.relativePath): file is not readable or does not exist")
@@ -185,10 +198,25 @@ class Frontend {
       // Already diagnosed in the called method.
       return nil
     }
+#else
+    guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "rb") }) else {
+      diagnosticsEngine.emitError(
+        "Unable to open \(url.path): file is not readable or does not exist")
+      return nil
+    }
+    let fd = fileno(fp)
+    guard fd != -1 else {
+      diagnosticsEngine.emitError(
+        "Unable to open \(url.path): file is not readable or does not exist")
+      return nil
+    }
+    let sourceFile = FileHandle(fileDescriptor: fd)
+    // FIXME: load configuration file
+    let configuration = Configuration()
+#endif
 
     return FileToProcess(fileHandle: sourceFile, url: url, configuration: configuration)
   }
-#endif
 
 #if !os(WASI)
   /// Returns the configuration that applies to the given `.swift` source file, when an explicit

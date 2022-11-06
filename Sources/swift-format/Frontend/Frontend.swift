@@ -65,10 +65,8 @@ class Frontend {
 #endif
   }
 
-#if !os(WASI)
   /// Prints diagnostics to standard error, optionally with color.
   final let diagnosticPrinter: StderrDiagnosticPrinter
-#endif
 
   /// The diagnostic engine to which warnings and errors will be emitted.
   final let diagnosticsEngine: UnifiedDiagnosticsEngine
@@ -96,14 +94,10 @@ class Frontend {
   init(lintFormatOptions: LintFormatOptions) {
     self.lintFormatOptions = lintFormatOptions
 
-#if !os(WASI)
     self.diagnosticPrinter = StderrDiagnosticPrinter(
       colorMode: lintFormatOptions.colorDiagnostics.map { $0 ? .on : .off } ?? .auto)
     self.diagnosticsEngine =
       UnifiedDiagnosticsEngine(diagnosticsHandlers: [diagnosticPrinter.printDiagnostic])
-#else
-    self.diagnosticsEngine = UnifiedDiagnosticsEngine()
-#endif
   }
 
   /// Runs the linter or formatter over the inputs.

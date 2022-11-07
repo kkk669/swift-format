@@ -12,6 +12,9 @@
 
 import ArgumentParser
 import Foundation
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Common arguments used by the `lint` and `format` subcommands.
 struct LintFormatOptions: ParsableArguments {
@@ -86,15 +89,8 @@ struct LintFormatOptions: ParsableArguments {
 
     if !paths.isEmpty && !recursive {
       for path in paths {
-#if !os(WASI)
         var isDir: ObjCBool = false
-        let dirExists = FileManager.default.fileExists(atPath: path, isDirectory: &isDir) && isDir.boolValue
-#else
-        var status = stat()
-        let retVal = path.withCString { stat($0, &status) }
-        let dirExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
-#endif
-        if dirExists {
+        if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
           throw ValidationError(
             """
             '\(path)' is a path to a directory, not a Swift source file.

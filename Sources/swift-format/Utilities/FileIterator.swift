@@ -11,6 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Iterator for looping over lists of files and directories. Directories are automatically
 /// traversed recursively, and we check for files with a ".swift" extension.
@@ -22,12 +25,8 @@ struct FileIterator: Sequence, IteratorProtocol {
   /// Iterator for the list of URLs.
   var urlIterator: Array<URL>.Iterator
 
-#if !os(WASI)
   /// Iterator for recursing through directories.
   var dirIterator: FileManager.DirectoryEnumerator? = nil
-#else
-  var dirIterator: WASIDirectoryEnumerator? = nil
-#endif
 
   /// The current working directory of the process, which is used to relativize URLs of files found
   /// during iteration.
@@ -61,20 +60,9 @@ struct FileIterator: Sequence, IteratorProtocol {
         output = nextInDirectory()
       } else {
         guard let next = urlIterator.next() else { return nil }
-#if !os(WASI)
         var isDir: ObjCBool = false
-        let dirExists = FileManager.default.fileExists(atPath: next.path, isDirectory: &isDir) && isDir.boolValue
-#else
-        var status = stat()
-        let retVal = next.withUnsafeFileSystemRepresentation { stat($0, &status) }
-        let dirExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
-#endif
-        if dirExists {
-#if !os(WASI)
+        if FileManager.default.fileExists(atPath: next.path, isDirectory: &isDir), isDir.boolValue {
           dirIterator = FileManager.default.enumerator(at: next, includingPropertiesForKeys: nil)
-#else
-          dirIterator = WASIDirectoryEnumerator(at: next)
-#endif
           currentDirectory = next
         } else {
           // We'll get here if the path is a file, or if it doesn't exist. In the latter case,
@@ -97,23 +85,12 @@ struct FileIterator: Sequence, IteratorProtocol {
   private mutating func nextInDirectory() -> URL? {
     var output: URL? = nil
     while output == nil {
-#if !os(WASI)
-      let itemOrNil = dirIterator?.nextObject() as? URL
-#else
-      let itemOrNil = dirIterator?.next()
-#endif
-      if let item = itemOrNil {
+      if let item = dirIterator?.nextObject() as? URL {
         if item.lastPathComponent.hasSuffix(fileSuffix) {
-#if !os(WASI)
           var isDir: ObjCBool = false
-          let fileExists = FileManager.default.fileExists(atPath: item.path, isDirectory: &isDir)
+          if FileManager.default.fileExists(atPath: item.path, isDirectory: &isDir)
             && !isDir.boolValue
-#else
-          var status = stat()
-          let retVal = item.withUnsafeFileSystemRepresentation { stat($0, &status) }
-          let fileExists = retVal == 0 && (status.st_mode & S_IFMT) != S_IFDIR
-#endif
-          if fileExists {
+          {
             // We can't use the `.producesRelativePathURLs` enumeration option because it isn't
             // supported yet on Linux, so we need to relativize the URL ourselves.
             let relativePath =

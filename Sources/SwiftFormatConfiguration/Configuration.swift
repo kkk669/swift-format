@@ -11,6 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// A version number that can be specified in the configuration file, which allows us to change the
 /// format in the future if desired and still support older files.
@@ -149,30 +152,7 @@ public struct Configuration: Codable, Equatable {
 
   /// Constructs a Configuration by loading it from a configuration file.
   public init(contentsOf url: URL) throws {
-#if !os(WASI)
     let data = try Data(contentsOf: url)
-#else
-    guard let fp = fopen(url.path, "rb") else {
-      throw ConfigurationError.fileNotReadable
-    }
-    defer { fclose(fp) }
-    let fd = fileno(fp)
-    guard fd != -1 else {
-      throw ConfigurationError.fileNotReadable
-    }
-    var status = stat()
-    guard fstat(fd, &status) == 0 else {
-      throw ConfigurationError.fileNotReadable
-    }
-    let fileSize = Int(status.st_size)
-    var bytes = [UInt8](unsafeUninitializedCapacity: fileSize) { _, initializedCount in
-      initializedCount += fileSize
-    }
-    guard fread(&bytes, 1, fileSize, fp) == fileSize else {
-      throw ConfigurationError.fileNotReadable
-    }
-    let data = Data(bytes)
-#endif
     self = try JSONDecoder().decode(Configuration.self, from: data)
   }
 
@@ -260,16 +240,10 @@ public struct Configuration: Codable, Equatable {
     // source file being formatted). However, it will immediately have its basename removed in the
     // loop below, and from then on serve as a directory path only.
     var candidateDirectory = url.absoluteURL.standardized
-#if !os(WASI)
     var isDirectory: ObjCBool = false
-    let directoryExists = FileManager.default.fileExists(atPath: candidateDirectory.path, isDirectory: &isDirectory)
-      && isDirectory.boolValue
-#else
-    var status = stat()
-    let retVal = candidateDirectory.withUnsafeFileSystemRepresentation { stat($0, &status) }
-    let directoryExists = retVal == 0 && (status.st_mode & S_IFMT) == S_IFDIR
-#endif
-    if directoryExists {
+    if FileManager.default.fileExists(atPath: candidateDirectory.path, isDirectory: &isDirectory),
+      isDirectory.boolValue
+    {
       // If the path actually was a directory, append a fake basename so that the trimming code
       // below doesn't have to deal with the first-time special case.
       candidateDirectory.appendPathComponent("placeholder")
@@ -277,15 +251,9 @@ public struct Configuration: Codable, Equatable {
     repeat {
       candidateDirectory.deleteLastPathComponent()
       let candidateFile = candidateDirectory.appendingPathComponent(".swift-format")
-#if !os(WASI)
       if FileManager.default.isReadableFile(atPath: candidateFile.path) {
         return candidateFile
       }
-#else
-      if candidateFile.withUnsafeFileSystemRepresentation({ access($0, R_OK) }) == 0 {
-        return candidateFile
-      }
-#endif
     } while candidateDirectory.path != "/"
 
     return nil

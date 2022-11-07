@@ -18,6 +18,9 @@ import SwiftFormatPrettyPrint
 import SwiftFormatRules
 import SwiftOperators
 import SwiftSyntax
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Formats Swift source code or syntax trees according to the Swift style guidelines.
 public final class SwiftFormatter {
@@ -63,7 +66,6 @@ public final class SwiftFormatter {
     to outputStream: inout Output,
     parsingDiagnosticHandler: ((Diagnostic, SourceLocation) -> Void)? = nil
   ) throws {
-#if !os(WASI)
     guard FileManager.default.isReadableFile(atPath: url.path) else {
       throw SwiftFormatError.fileNotReadable
     }
@@ -72,30 +74,6 @@ public final class SwiftFormatter {
       throw SwiftFormatError.isDirectory
     }
     let source = try String(contentsOf: url, encoding: .utf8)
-#else
-    guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "rb") }) else {
-      throw SwiftFormatError.fileNotReadable
-    }
-    defer { fclose(fp) }
-    let fd = fileno(fp)
-    guard fd != -1 else {
-      throw SwiftFormatError.fileNotReadable
-    }
-    var status = stat()
-    guard fstat(fd, &status) == 0 else {
-      throw SwiftFormatError.fileNotReadable
-    }
-    let fileSize = Int(status.st_size)
-    var sourceBytes = [UInt8](unsafeUninitializedCapacity: fileSize) { _, initializedCount in
-      initializedCount += fileSize
-    }
-    guard fread(&sourceBytes, 1, fileSize, fp) == fileSize else {
-      throw SwiftFormatError.fileNotReadable
-    }
-    guard let source = String(bytes: sourceBytes, encoding: .utf8) else {
-      throw SwiftFormatError.fileNotReadable
-    }
-#endif
     let sourceFile = try parseAndEmitDiagnostics(
       source: source,
       operatorTable: .standardOperators,

@@ -15,6 +15,9 @@ import SwiftFormat
 import SwiftFormatConfiguration
 import SwiftSyntax
 import SwiftParser
+#if os(WASI)
+import WASIHelpers
+#endif
 
 class Frontend {
   /// Represents a file to be processed by the frontend and any file-specific options associated
@@ -41,33 +44,9 @@ class Frontend {
     /// The contents of the file are assumed to be UTF-8 encoded. If there is an error decoding the
     /// contents, `nil` will be returned.
     lazy var sourceText: String? = {
-#if !os(WASI)
       let sourceData = fileHandle.readDataToEndOfFile()
       defer { fileHandle.closeFile() }
       return String(data: sourceData, encoding: .utf8)
-#else
-      guard let fp = fdopen(fileHandle.fileDescriptor, "rb") else {
-        return nil
-      }
-      defer { fclose(fp) }
-      var sourceBytes: [UInt8] = []
-      var tmpBuffer = [UInt8](repeating: 0, count: 1 << 12)
-      while true {
-        let n = fread(&tmpBuffer, 1, tmpBuffer.count, fp)
-        if n < 0 {
-          if errno == POSIXErrorCode.EINTR.rawValue { continue }
-          return nil
-        }
-        if n == 0 {
-          if ferror(fp) != 0 {
-            return nil
-          }
-          break
-        }
-        sourceBytes.append(contentsOf: tmpBuffer[..<n])
-      }
-      return String(bytes: sourceBytes, encoding: .utf8)
-#endif
     }()
 
     init(fileHandle: FileHandle, url: URL, configuration: Configuration) {
@@ -141,13 +120,8 @@ class Frontend {
       return
     }
 
-#if !os(WASI)
-    let fileHandle = FileHandle.standardInput
-#else
-    let fileHandle = FileHandle(fileDescriptor: fileno(stdin))
-#endif
     let fileToProcess = FileToProcess(
-      fileHandle: fileHandle,
+      fileHandle: FileHandle.standardInput,
       url: URL(fileURLWithPath: lintFormatOptions.assumeFilename ?? "<stdin>"),
       configuration: configuration)
     processFile(fileToProcess)
@@ -176,26 +150,11 @@ class Frontend {
   /// Read and prepare the file at the given path for processing, optionally synchronizing
   /// diagnostic output.
   private func openAndPrepareFile(at url: URL) -> FileToProcess? {
-#if !os(WASI)
     guard let sourceFile = try? FileHandle(forReadingFrom: url) else {
       diagnosticsEngine.emitError(
         "Unable to open \(url.relativePath): file is not readable or does not exist")
       return nil
     }
-#else
-    guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "rb") }) else {
-      diagnosticsEngine.emitError(
-        "Unable to open \(url.path): file is not readable or does not exist")
-      return nil
-    }
-    let fd = fileno(fp)
-    guard fd != -1 else {
-      diagnosticsEngine.emitError(
-        "Unable to open \(url.path): file is not readable or does not exist")
-      return nil
-    }
-    let sourceFile = FileHandle(fileDescriptor: fd)
-#endif
 
     guard
       let configuration = configuration(

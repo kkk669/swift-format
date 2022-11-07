@@ -10,8 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Errors that can be thrown by the `Configuration` APIs.
-public enum ConfigurationError: Error {
-  /// The requested file was not readable or it did not exist.
-  case fileNotReadable
+#if os(WASI)
+public struct POSIXError: Error {
+  public var errno: Int32
+  public init(_ errno: Int32) { self.errno = errno }
 }
+#endif

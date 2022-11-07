@@ -60,7 +60,7 @@ extension FileManager {
       dpStack.append((url, dp))
     }
 
-    public func next() -> URL? {
+    public func next() -> Any? {
       while let (url, dp) = dpStack.last {
         while let ep = readdir(dp) {
           let filename = withUnsafeBytes(of: &ep.pointee.d_type) { rawPtr in

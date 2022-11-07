@@ -69,24 +69,15 @@ final class StderrDiagnosticPrinter {
   func printDiagnostic(_ diagnostic: TSCBasic.Diagnostic) {
 #if !os(WASI)
     printQueue.sync {
-      let stderr = FileHandleTextOutputStream(FileHandle.standardError)
-
-      stderr.write("\(ansiSGR(.boldWhite))\(diagnostic.location): ")
-
-      switch diagnostic.behavior {
-      case .error: stderr.write("\(ansiSGR(.boldRed))error: ")
-      case .warning: stderr.write("\(ansiSGR(.boldMagenta))warning: ")
-      case .note: stderr.write("\(ansiSGR(.boldGray))note: ")
-      case .remark, .ignored: break
-      }
-
-      let data = diagnostic.data as! UnifiedDiagnosticData
-      if let category = data.category {
-        stderr.write("\(ansiSGR(.boldYellow))[\(category)] ")
-      }
-      stderr.write("\(ansiSGR(.boldWhite))\(data.message)\(ansiSGR(.reset))\n")
+      _printDiagnostic(diagnostic)
     }
 #else
+    _printDiagnostic(diagnostic)
+#endif
+  }
+
+  /// Prints a diagnostic to standard error.
+  private func _printDiagnostic(_ diagnostic: TSCBasic.Diagnostic) {
     let stderr = FileHandleTextOutputStream(FileHandle.standardError)
 
     stderr.write("\(ansiSGR(.boldWhite))\(diagnostic.location): ")
@@ -103,7 +94,6 @@ final class StderrDiagnosticPrinter {
       stderr.write("\(ansiSGR(.boldYellow))[\(category)] ")
     }
     stderr.write("\(ansiSGR(.boldWhite))\(data.message)\(ansiSGR(.reset))\n")
-#endif
   }
 
   /// Returns the complete ANSI sequence used to enable the given SGR if colors are enabled in the

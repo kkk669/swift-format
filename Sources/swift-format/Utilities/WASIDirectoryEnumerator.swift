@@ -10,12 +10,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if os(WASI)
-
 import Foundation
 
+#if os(WASI)
 /// Thread-unsafe directory enumerator.
-final class WASIDirectoryEnumerator: IteratorProtocol {
+final class WASIDirectoryEnumerator: Sequence, IteratorProtocol {
   private var dpStack = [(URL, OpaquePointer)]()
 
   init(at url: URL) {
@@ -56,5 +55,4 @@ final class WASIDirectoryEnumerator: IteratorProtocol {
     return nil
   }
 }
-
 #endif

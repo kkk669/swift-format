@@ -15,11 +15,11 @@ import Foundation
 #if os(WASI)
 extension FileHandle {
   public class var standardInput: FileHandle {
-    .init(fileDescriptor: fileno(stdin))
+    .init(fileDescriptor: STDIN_FILENO)
   }
 
   public class var standardOutput: FileHandle {
-    .init(fileDescriptor: fileno(stdout))
+    .init(fileDescriptor: STDOUT_FILENO)
   }
 
   public convenience init(forReadingFrom url: URL) throws {

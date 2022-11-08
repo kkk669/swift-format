@@ -18,34 +18,23 @@ public enum WASIStringError: Error {
 }
 
 extension String {
-  public init(contentsOf url: URL, encoding: String.Encoding = .utf8) throws {
-    guard let fp = url.withUnsafeFileSystemRepresentation({ fopen($0, "rb") }) else {
-      throw POSIXError(errno)
-    }
-    defer { fclose(fp) }
-
-    let fd = fileno(fp)
-    guard fd != -1 else {
-      throw POSIXError(errno)
-    }
-
-    var status = stat()
-    guard fstat(fd, &status) == 0 else {
-      throw POSIXError(errno)
-    }
-    let fileSize = Int(status.st_size)
-
-    var bytes = [UInt8](unsafeUninitializedCapacity: fileSize) { _, initializedCount in
-      initializedCount = fileSize
-    }
-    guard fread(&bytes, 1, fileSize, fp) == fileSize else {
-      throw POSIXError(errno)
-    }
-
-    guard let value = Self(bytes: bytes, encoding: encoding) else {
+  public init(contentsOf url: URL, encoding enc: String.Encoding = .utf8) throws {
+    let data = try Data(contentsOf: url)
+    guard let string = String(data: data, encoding: enc) else {
       throw WASIStringError.encoding
     }
-    self = value
+    self = string
+  }
+
+  public func write(
+    to url: URL,
+    atomically useAuxiliaryFile: Bool,
+    encoding enc: String.Encoding
+  ) throws {
+    guard let data = data(using: enc) else {
+      throw WASIStringError.encoding
+    }
+    try data.write(to: url, options: useAuxiliaryFile ? .atomic : [])
   }
 }
 #endif

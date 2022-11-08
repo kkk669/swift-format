@@ -68,6 +68,7 @@ extension FileManager {
             let d_namePtr = rawPtr.baseAddress! + MemoryLayout<UInt8>.stride
             return String(cString: d_namePtr.assumingMemoryBound(to: CChar.self))
           }
+          guard filename != "." && filename != ".." else { continue }
           let child = url.appendingPathComponent(filename)
           var status = stat()
           if child.withUnsafeFileSystemRepresentation({ stat($0, &status) }) == 0, (status.st_mode & S_IFMT) == S_IFDIR {

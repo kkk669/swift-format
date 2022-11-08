@@ -191,8 +191,8 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
       branch: "main"
     ),
     .package(
-      url: "https://github.com/kkk669/swift-syntax.git",
-      branch: "wasm32-wasi"
+      url: "https://github.com/apple/swift-syntax.git",
+      branch: "main"
     ),
     .package(
       url: "https://github.com/kkk669/swift-tools-support-core.git",

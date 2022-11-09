@@ -1,0 +1,35 @@
+name: Swift
+
+on:
+  push:
+    branches: [ "wasm32-wasi" ]
+  pull_request:
+    branches: [ "wasm32-wasi" ]
+
+jobs:
+  build:
+
+    runs-on: macos-12
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Select Xcode
+      run: sudo xcode-select -s /Applications/Xcode_14.1.app
+    - name: Install tools
+      run: brew install wabt
+    - name: Install Wasm Toolchain
+      run: |
+        VERSION=swift-wasm-DEVELOPMENT-SNAPSHOT-2022-10-04-a
+        TOOLCHAIN_URL="https://github.com/swiftwasm/swift/releases/download/$VERSION/$VERSION-macos_x86_64.pkg"
+        curl -LO $TOOLCHAIN_URL
+        installer -target CurrentUserHomeDirectory -pkg $VERSION-macos_x86_64.pkg
+        echo "PATH=$HOME/Library/Developer/Toolchains/$VERSION.xctoolchain/usr/bin:${PATH}" >> $GITHUB_ENV
+    - name: Build
+      run: |
+        swift build --product swift-format --triple wasm32-unknown-wasi -Xlinker -z -Xlinker stack-size=262144
+        wasm-strip .build/debug/swift-format.wasm
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: swift-format.wasm
+        path: .build/debug/swift-format.wasm

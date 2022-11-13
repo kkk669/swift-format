@@ -28,8 +28,8 @@ jobs:
       run: |
         swift build --product swift-format --triple wasm32-unknown-wasi -c debug -Xlinker -z -Xlinker stack-size=262144
         swift build --product swift-format --triple wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=262144
-        wasm-strip swift-format-debug.wasm
-        wasm-strip swift-format-release.wasm
+        wasm-strip .build/debug/swift-format.wasm
+        wasm-strip .build/release/swift-format.wasm
         cp .build/debug/swift-format.wasm swift-format-debug.wasm
         wasm-opt -Os .build/release/swift-format.wasm -o swift-format-release.wasm
     - name: Upload a Build Artifact

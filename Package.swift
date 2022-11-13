@@ -187,8 +187,8 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
   // Building standalone.
   package.dependencies += [
     .package(
-      url: "https://github.com/apple/swift-argument-parser.git",
-      branch: "main"
+      url: "https://github.com/kkk669/swift-argument-parser.git",
+      branch: "patch-1"
     ),
     .package(
       url: "https://github.com/apple/swift-syntax.git",

@@ -1209,22 +1209,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return .skipChildren
   }
 
-  override func visit(_ node: ObjcKeyPathExprSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
-  override func visit(_ node: ObjectLiteralExprSyntax) -> SyntaxVisitorContinueKind {
-    // TODO: Remove this; it has been subsumed by `MacroExpansionDeclSyntax`. But that feature is
-    // still in flux and this node type is still present in the API, even though nothing in the
-    // parser currently creates it.
-    arrangeFunctionCallArgumentList(
-      node.arguments,
-      leftDelimiter: node.leftParen,
-      rightDelimiter: node.rightParen,
-      forcesBreakBeforeRightDelimiter: false)
-    return .visitChildren
-  }
-
   override func visit(_ node: MacroExpansionDeclSyntax) -> SyntaxVisitorContinueKind {
     arrangeFunctionCallArgumentList(
       node.argumentList,
@@ -1405,12 +1389,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
       arrangeParameterClause(associatedValue, forcesBreakBeforeRightParen: false)
     }
 
-    return .visitChildren
-  }
-
-  override func visit(_ node: ObjcSelectorExprSyntax) -> SyntaxVisitorContinueKind {
-    after(node.leftParen, tokens: .break(.open, size: 0), .open)
-    before(node.rightParen, tokens: .break(.close(mustBreak: false), size: 0), .close)
     return .visitChildren
   }
 
@@ -2005,18 +1983,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return .visitChildren
   }
 
-  override func visit(_ node: ObjcNamePieceSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
-  override func visit(_ node: PoundFileExprSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
-  override func visit(_ node: PoundLineExprSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
   override func visit(_ node: TypealiasDeclSyntax) -> SyntaxVisitorContinueKind {
     arrangeAttributeList(node.attributes)
 
@@ -2052,10 +2018,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   }
 
   override func visit(_ node: NilLiteralExprSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
-  override func visit(_ node: PoundErrorDeclSyntax) -> SyntaxVisitorContinueKind {
     return .visitChildren
   }
 
@@ -2108,10 +2070,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return .visitChildren
   }
 
-  override func visit(_ node: PoundColumnExprSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
   override func visit(_ node: WildcardPatternSyntax) -> SyntaxVisitorContinueKind {
     return .visitChildren
   }
@@ -2145,10 +2103,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return .visitChildren
   }
 
-  override func visit(_ node: PoundWarningDeclSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
   override func visit(_ node: ExpressionPatternSyntax) -> SyntaxVisitorContinueKind {
     return .visitChildren
   }
@@ -2170,10 +2124,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     if node.parent == nil || !node.parent!.is(PatternBindingSyntax.self) {
       after(node.equal, tokens: .break)
     }
-    return .visitChildren
-  }
-
-  override func visit(_ node: PoundFunctionExprSyntax) -> SyntaxVisitorContinueKind {
     return .visitChildren
   }
 
@@ -2239,10 +2189,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   }
 
   override func visit(_ node: IntegerLiteralExprSyntax) -> SyntaxVisitorContinueKind {
-    return .visitChildren
-  }
-
-  override func visit(_ node: PoundDsohandleExprSyntax) -> SyntaxVisitorContinueKind {
     return .visitChildren
   }
 
@@ -2411,39 +2357,9 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return .visitChildren
   }
 
-  // MARK: - Nodes representing unknown or malformed syntax
+  // MARK: - Nodes representing unexpected or malformed syntax
 
   override func visit(_ node: UnexpectedNodesSyntax) -> SyntaxVisitorContinueKind {
-    verbatimToken(Syntax(node))
-    return .skipChildren
-  }
-
-  override func visit(_ node: UnknownDeclSyntax) -> SyntaxVisitorContinueKind {
-    verbatimToken(Syntax(node))
-    return .skipChildren
-  }
-
-  override func visit(_ node: UnknownExprSyntax) -> SyntaxVisitorContinueKind {
-    verbatimToken(Syntax(node))
-    return .skipChildren
-  }
-
-  override func visit(_ node: UnknownPatternSyntax) -> SyntaxVisitorContinueKind {
-    verbatimToken(Syntax(node))
-    return .skipChildren
-  }
-
-  override func visit(_ node: UnknownStmtSyntax) -> SyntaxVisitorContinueKind {
-    verbatimToken(Syntax(node))
-    return .skipChildren
-  }
-
-  override func visit(_ node: UnknownSyntax) -> SyntaxVisitorContinueKind {
-    verbatimToken(Syntax(node))
-    return .skipChildren
-  }
-
-  override func visit(_ node: UnknownTypeSyntax) -> SyntaxVisitorContinueKind {
     verbatimToken(Syntax(node))
     return .skipChildren
   }
@@ -3380,7 +3296,8 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return nil
   }
 
-  /// Returns a value indicating whether whitespace should be required around the given operator.
+  /// Returns a value indicating whether whitespace should be required around the given operator,
+  /// for the given configuration.
   ///
   /// If spaces are not required (for example, range operators), then the formatter will also forbid
   /// breaks around the operator. This is to prevent situations where a break could occur before an
@@ -3392,8 +3309,9 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     // to ignore that and apply our own rules.
     if let binaryOperator = operatorExpr.as(BinaryOperatorExprSyntax.self) {
       let token = binaryOperator.operatorToken
-      if let binOp = operatorTable.infixOperator(named: token.text),
-        let precedenceGroup = binOp.precedenceGroup, precedenceGroup == "RangeFormationPrecedence"
+      if !config.spacesAroundRangeFormationOperators,
+         let binOp = operatorTable.infixOperator(named: token.text),
+         let precedenceGroup = binOp.precedenceGroup, precedenceGroup == "RangeFormationPrecedence"
       {
         // We want to omit whitespace around range formation operators if possible. We can't do this
         // if the token is either preceded by a postfix operator, followed by a prefix operator, or

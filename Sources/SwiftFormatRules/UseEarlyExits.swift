@@ -54,31 +54,32 @@ public final class UseEarlyExits: SyntaxFormatRule {
     
     let result = CodeBlockItemListSyntax(
       codeBlockItems.flatMap { (codeBlockItem: CodeBlockItemSyntax) -> [CodeBlockItemSyntax] in
-        // The `elseBody` of an `IfStmtSyntax` will be a `CodeBlockSyntax` if it's an `else` block,
-        // or another `IfStmtSyntax` if it's an `else if` block. We only want to handle the former.
-        guard let ifStatement = codeBlockItem.item.as(IfStmtSyntax.self),
-          let elseBody = ifStatement.elseBody?.as(CodeBlockSyntax.self),
-          codeBlockEndsWithEarlyExit(elseBody)
+        // The `elseBody` of an `IfExprSyntax` will be a `CodeBlockSyntax` if it's an `else` block,
+        // or another `IfExprSyntax` if it's an `else if` block. We only want to handle the former.
+        guard let exprStmt = codeBlockItem.item.as(ExpressionStmtSyntax.self),
+              let ifStatement = exprStmt.expression.as(IfExprSyntax.self),
+              let elseBody = ifStatement.elseBody?.as(CodeBlockSyntax.self),
+              codeBlockEndsWithEarlyExit(elseBody)
         else {
           return [codeBlockItem]
         }
 
         diagnose(.useGuardStatement, on: ifStatement.elseKeyword)
 
-        let trueBlock = ifStatement.body.withLeftBrace(nil).withRightBrace(nil)
+        let trueBlock = ifStatement.body
 
-        let guardKeyword = TokenSyntax.guardKeyword(
+        let guardKeyword = TokenSyntax.keyword(.guard,
           leadingTrivia: ifStatement.ifKeyword.leadingTrivia,
           trailingTrivia: .spaces(1))
         let guardStatement = GuardStmtSyntax(
           guardKeyword: guardKeyword,
           conditions: ifStatement.conditions,
-          elseKeyword: TokenSyntax.elseKeyword(trailingTrivia: .spaces(1)),
+          elseKeyword: TokenSyntax.keyword(.else, trailingTrivia: .spaces(1)),
           body: elseBody)
 
         var items = [
           CodeBlockItemSyntax(
-            item: .stmt(StmtSyntax(guardStatement)), semicolon: nil, errorTokens: nil),
+            item: .stmt(StmtSyntax(guardStatement)), semicolon: nil),
         ]
         items.append(contentsOf: trueBlock.statements)
         return items

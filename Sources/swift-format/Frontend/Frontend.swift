@@ -15,6 +15,9 @@ import SwiftFormat
 import SwiftFormatConfiguration
 import SwiftSyntax
 import SwiftParser
+#if os(WASI)
+import WASIHelpers
+#endif
 
 class Frontend {
   /// Represents a file to be processed by the frontend and any file-specific options associated
@@ -131,10 +134,14 @@ class Frontend {
       "processURLs(_:) should only be called when 'urls' is non-empty.")
 
     if parallel {
+#if !os(WASI)
       let filesToProcess = FileIterator(urls: urls).compactMap(openAndPrepareFile)
       DispatchQueue.concurrentPerform(iterations: filesToProcess.count) { index in
         processFile(filesToProcess[index])
       }
+#else
+      fatalError("not implemented")
+#endif
     } else {
       FileIterator(urls: urls).lazy.compactMap(openAndPrepareFile).forEach(processFile)
     }

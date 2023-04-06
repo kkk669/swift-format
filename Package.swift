@@ -54,6 +54,7 @@ let package = Package(
         "SwiftFormatPrettyPrint",
         "SwiftFormatRules",
         "SwiftFormatWhitespaceLinter",
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftOperators", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
@@ -61,7 +62,8 @@ let package = Package(
       ]
     ),
     .target(
-      name: "SwiftFormatConfiguration"
+      name: "SwiftFormatConfiguration",
+      dependencies: [.target(name: "WASIHelpers", condition: .when(platforms: [.wasi]))]
     ),
     .target(
       name: "SwiftFormatCore",
@@ -98,6 +100,9 @@ let package = Package(
         "SwiftFormatCore",
         .product(name: "SwiftSyntax", package: "swift-syntax"),
       ]
+    ),
+    .target(
+      name: "WASIHelpers"
     ),
     .plugin(
       name: "Format Source Code",
@@ -140,6 +145,7 @@ let package = Package(
         "SwiftFormat",
         "SwiftFormatConfiguration",
         "SwiftFormatCore",
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
@@ -219,11 +225,11 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
     ),
     .package(
       url: "https://github.com/apple/swift-syntax.git",
-      branch: "main"
+      exact: "508.0.0"
     ),
     .package(
-      url: "https://github.com/apple/swift-tools-support-core.git",
-      branch: "main"
+      url: "https://github.com/kkk669/swift-tools-support-core.git",
+      branch: "wasm32-wasi"
     ),
   ]
 } else {

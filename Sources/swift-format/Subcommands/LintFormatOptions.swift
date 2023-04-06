@@ -12,6 +12,9 @@
 
 import ArgumentParser
 import Foundation
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Common arguments used by the `lint` and `format` subcommands.
 struct LintFormatOptions: ParsableArguments {

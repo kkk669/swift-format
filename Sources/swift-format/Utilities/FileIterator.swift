@@ -11,6 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Iterator for looping over lists of files and directories. Directories are automatically
 /// traversed recursively, and we check for files with a ".swift" extension.
@@ -27,7 +30,7 @@ struct FileIterator: Sequence, IteratorProtocol {
 
   /// The current working directory of the process, which is used to relativize URLs of files found
   /// during iteration.
-  let workingDirectory = URL(fileURLWithPath: ".")
+  let workingDirectory = URL(fileURLWithPath: ".", isDirectory: true)
 
   /// Keep track of the current directory we're recursing through.
   var currentDirectory = URL(fileURLWithPath: "")

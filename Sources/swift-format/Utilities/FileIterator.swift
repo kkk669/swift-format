@@ -30,7 +30,7 @@ struct FileIterator: Sequence, IteratorProtocol {
 
   /// The current working directory of the process, which is used to relativize URLs of files found
   /// during iteration.
-  let workingDirectory = URL(fileURLWithPath: ".", isDirectory: true)
+  let workingDirectory = URL(fileURLWithPath: ".")
 
   /// Keep track of the current directory we're recursing through.
   var currentDirectory = URL(fileURLWithPath: "")
@@ -95,7 +95,7 @@ struct FileIterator: Sequence, IteratorProtocol {
             // supported yet on Linux, so we need to relativize the URL ourselves.
             let relativePath =
               item.path.hasPrefix(workingDirectory.path)
-              ? String(item.path.dropFirst(workingDirectory.path.count + 1))
+              ? String(item.path.dropFirst(workingDirectory.path.count))
               : item.path
             output =
               URL(fileURLWithPath: relativePath, isDirectory: false, relativeTo: workingDirectory)

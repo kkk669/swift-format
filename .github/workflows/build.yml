@@ -2,9 +2,9 @@ name: Swift
 
 on:
   push:
-    branches: [ "release/5.8-wasm32-wasi" ]
+    branches: [ "wasm32-wasi-release/5.8" ]
   pull_request:
-    branches: [ "release/5.8-wasm32-wasi" ]
+    branches: [ "wasm32-wasi-release/5.8" ]
 
 jobs:
   build:

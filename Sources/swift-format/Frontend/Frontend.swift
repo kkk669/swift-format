@@ -15,9 +15,6 @@ import SwiftFormat
 import SwiftFormatConfiguration
 import SwiftSyntax
 import SwiftParser
-#if os(WASI)
-import WASIHelpers
-#endif
 
 class Frontend {
   /// Represents a file to be processed by the frontend and any file-specific options associated

@@ -718,13 +718,23 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     after(node.unknownAttr?.lastToken, tokens: .space)
     after(node.label.lastToken, tokens: .break(.reset, size: 0), .break(.open), .open)
 
-    // If switch/case labels were configured to be indented, insert an extra `close` break after the
-    // case body to match the `open` break above
+    // If switch/case labels were configured to be indented, insert an extra `close` break after
+    // the case body to match the `open` break above
     var afterLastTokenTokens: [Token] = [.break(.close, size: 0), .close]
     if config.indentSwitchCaseLabels {
       afterLastTokenTokens.append(.break(.close, size: 0))
     }
-    after(node.lastToken, tokens: afterLastTokenTokens)
+
+    // If the case contains statements, add the closing tokens after the last token of the case.
+    // Otherwise, add the closing tokens before the next case (or the end of the switch) to have the
+    // same effect. If instead the opening and closing tokens were omitted completely in the absence
+    // of statements, comments within the empty case would be incorrectly indented to the same level
+    // as the case label.
+    if node.label.lastToken != node.lastToken {
+      after(node.lastToken, tokens: afterLastTokenTokens)
+    } else {
+      before(node.nextToken, tokens: afterLastTokenTokens)
+    }
 
     return .visitChildren
   }
@@ -1394,7 +1404,7 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
         ]
       )
     } else if let condition = node.condition {
-      before(condition.firstToken, tokens: .printerControl(kind: .disableBreaking))
+      before(condition.firstToken, tokens: .printerControl(kind: .disableBreaking(allowDiscretionary: true)))
       after(
         condition.lastToken,
         tokens: .printerControl(kind: .enableBreaking), .break(.reset, size: 0))
@@ -1723,9 +1733,14 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   }
 
   override func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
-    after(node.attributes?.lastToken, tokens: .space)
+    // Import declarations should never be wrapped.
+    before(node.firstToken, tokens: .printerControl(kind: .disableBreaking(allowDiscretionary: false)))
+
+    arrangeAttributeList(node.attributes)
     after(node.importTok, tokens: .space)
     after(node.importKind, tokens: .space)
+
+    after(node.lastToken, tokens: .printerControl(kind: .enableBreaking))
     return .visitChildren
   }
 

@@ -38,9 +38,9 @@ extension ModifierListSyntax {
   /// Returns modifier list without the given modifier.
   func remove(name: String) -> ModifierListSyntax {
     guard has(modifier: name) else { return self }
-    for mod in self {
+    for (index, mod) in self.enumerated() {
       if mod.name.text == name {
-        return removing(childAt: mod.indexInParent)
+        return removing(childAt: index)
       }
     }
     return self
@@ -72,12 +72,12 @@ extension ModifierListSyntax {
 
     if index == 0 {
       guard formatTrivia else { return inserting(modifier, at: index) }
-      guard let firstMod = first, let firstTok = firstMod.firstToken else {
+      guard let firstMod = first, let firstTok = firstMod.firstToken(viewMode: .sourceAccurate) else {
         return inserting(modifier, at: index)
       }
       let formattedMod = replaceTrivia(
         on: modifier,
-        token: modifier.firstToken,
+        token: modifier.firstToken(viewMode: .sourceAccurate),
         leadingTrivia: firstTok.leadingTrivia)
       newModifiers[0] = replaceTrivia(
         on: firstMod,

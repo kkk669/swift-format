@@ -9,17 +9,17 @@ on:
 jobs:
   build:
 
-    runs-on: macos-12
+    runs-on: macos-13
 
     steps:
     - uses: actions/checkout@v3
     - name: Select Xcode
-      run: sudo xcode-select -s /Applications/Xcode_14.2.app
+      run: sudo xcode-select -s /Applications/Xcode_14.3.app
     - name: Install tools
       run: brew install wabt binaryen
     - name: Install Wasm Toolchain
       run: |
-        VERSION=swift-wasm-5.8-SNAPSHOT-2023-02-25-a
+        VERSION=swift-wasm-5.8-SNAPSHOT-2023-04-26-a
         TOOLCHAIN_URL="https://github.com/swiftwasm/swift/releases/download/$VERSION/$VERSION-macos_x86_64.pkg"
         curl -LO $TOOLCHAIN_URL
         installer -target CurrentUserHomeDirectory -pkg $VERSION-macos_x86_64.pkg
@@ -29,18 +29,8 @@ jobs:
         swift build --product swift-format --triple wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=262144
         wasm-strip .build/release/swift-format.wasm
         wasm-opt -Os .build/release/swift-format.wasm -o swift-format.wasm
-    - name: Checkout WasmTransformer
-      uses: actions/checkout@v3
-      with:
-        repository: swiftwasm/WasmTransformer
-        ref: 0.4.1
-        path: WasmTransformer
-    - name: Lower i64 imports to i32
-      run: |
-        swift run wasm-trans ../swift-format.wasm --i64-to-i32-lowering -o ../swift-format-lowered.wasm
-      working-directory: ./WasmTransformer
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: binaries
-        path: swift-format*.wasm
+        name: swift-format.wasm
+        path: swift-format.wasm

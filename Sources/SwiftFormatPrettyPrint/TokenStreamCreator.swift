@@ -412,6 +412,21 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     return .visitChildren
   }
 
+  override func visit(_ node: AccessorEffectSpecifiersSyntax) -> SyntaxVisitorContinueKind {
+    arrangeEffectSpecifiers(node)
+    return .visitChildren
+  }
+
+  override func visit(_ node: FunctionEffectSpecifiersSyntax) -> SyntaxVisitorContinueKind {
+    arrangeEffectSpecifiers(node)
+    return .visitChildren
+  }
+
+  override func visit(_ node: TypeEffectSpecifiersSyntax) -> SyntaxVisitorContinueKind {
+    arrangeEffectSpecifiers(node)
+    return .visitChildren
+  }
+
   /// Applies formatting tokens to the tokens in the given function or function-like declaration
   /// node (e.g., initializers, deinitiailizers, and subscripts).
   private func arrangeFunctionLikeDecl<Node: BracedSyntax, BodyContents: SyntaxCollection>(
@@ -434,6 +449,17 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     after(node.lastToken(viewMode: .sourceAccurate), tokens: .close)
   }
 
+  /// Arranges the `async` and `throws` effect specifiers of a function or accessor declaration.
+  private func arrangeEffectSpecifiers<Node: EffectSpecifiersSyntax>(_ node: Node) {
+    before(node.asyncSpecifier, tokens: .break)
+    before(node.throwsSpecifier, tokens: .break)
+    // Keep them together if both `async` and `throws` are present.
+    if let asyncSpecifier = node.asyncSpecifier, let throwsSpecifier = node.throwsSpecifier {
+      before(asyncSpecifier, tokens: .open)
+      after(throwsSpecifier, tokens: .close)
+    }
+  }
+
   // MARK: - Property and subscript accessor block nodes
 
   override func visit(_ node: AccessorListSyntax) -> SyntaxVisitorContinueKind {
@@ -449,22 +475,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
 
   override func visit(_ node: AccessorDeclSyntax) -> SyntaxVisitorContinueKind {
     arrangeAttributeList(node.attributes)
-
-    if let asyncKeyword = node.effectSpecifiers?.asyncSpecifier {
-      if node.effectSpecifiers?.throwsSpecifier != nil {
-        before(asyncKeyword, tokens: .break, .open)
-      } else {
-        before(asyncKeyword, tokens: .break)
-      }
-    }
-
-    if let throwsKeyword = node.effectSpecifiers?.throwsSpecifier {
-      before(node.effectSpecifiers?.throwsSpecifier, tokens: .break)
-      if node.effectSpecifiers?.asyncSpecifier != nil {
-        after(throwsKeyword, tokens: .close)
-      }
-    }
-
     arrangeBracesAndContents(of: node.body, contentsKeyPath: \.statements)
     return .visitChildren
   }
@@ -786,7 +796,7 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   override func visit(_ node: TupleExprSyntax) -> SyntaxVisitorContinueKind {
     // We'll do nothing if it's a zero-element tuple, because we just want to keep the empty `()`
     // together.
-    let elementCount = node.elementList.count
+    let elementCount = node.elements.count
 
     if elementCount == 1 {
       // A tuple with one element is a parenthesized expression; add a group around it to keep it
@@ -808,9 +818,9 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
       after(node.leftParen, tokens: .break(.open, size: 0), .open)
       before(node.rightParen, tokens: .break(.close, size: 0), .close)
 
-      insertTokens(.break(.same), betweenElementsOf: node.elementList)
+      insertTokens(.break(.same), betweenElementsOf: node.elements)
 
-      for element in node.elementList {
+      for element in node.elements {
         arrangeAsTupleExprElement(element)
       }
     }
@@ -1160,13 +1170,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
       }
     }
 
-    before(node.effectSpecifiers?.asyncSpecifier, tokens: .break)
-    before(node.effectSpecifiers?.throwsSpecifier, tokens: .break)
-    if let asyncKeyword = node.effectSpecifiers?.asyncSpecifier, let throwsTok = node.effectSpecifiers?.throwsSpecifier {
-      before(asyncKeyword, tokens: .open)
-      after(throwsTok, tokens: .close)
-    }
-
     before(node.output?.arrow, tokens: .break)
     after(node.lastToken(viewMode: .sourceAccurate), tokens: .close)
     before(node.inTok, tokens: .break(.same))
@@ -1471,6 +1474,7 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   }
 
   override func visit(_ node: OperatorDeclSyntax) -> SyntaxVisitorContinueKind {
+    after(node.fixity, tokens: .break)
     after(node.operatorKeyword, tokens: .break)
     return .visitChildren
   }
@@ -1606,8 +1610,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   override func visit(_ node: FunctionTypeSyntax) -> SyntaxVisitorContinueKind {
     after(node.leftParen, tokens: .break(.open, size: 0), .open)
     before(node.rightParen, tokens: .break(.close, size: 0), .close)
-    before(node.effectSpecifiers?.asyncSpecifier, tokens: .break)
-    before(node.effectSpecifiers?.throwsSpecifier, tokens: .break)
     return .visitChildren
   }
 
@@ -1750,7 +1752,7 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     before(node.firstToken(viewMode: .sourceAccurate), tokens: .printerControl(kind: .disableBreaking(allowDiscretionary: false)))
 
     arrangeAttributeList(node.attributes)
-    after(node.importTok, tokens: .space)
+    after(node.importKeyword, tokens: .space)
     after(node.importKind, tokens: .space)
 
     after(node.lastToken(viewMode: .sourceAccurate), tokens: .printerControl(kind: .enableBreaking))
@@ -1832,14 +1834,6 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   }
 
   override func visit(_ node: FunctionSignatureSyntax) -> SyntaxVisitorContinueKind {
-    before(node.effectSpecifiers?.asyncSpecifier, tokens: .break)
-    before(node.effectSpecifiers?.throwsSpecifier, tokens: .break)
-    if let asyncOrReasyncKeyword = node.effectSpecifiers?.asyncSpecifier,
-      let throwsOrRethrowsKeyword = node.effectSpecifiers?.throwsSpecifier
-    {
-      before(asyncOrReasyncKeyword, tokens: .open)
-      after(throwsOrRethrowsKeyword, tokens: .close)
-    }
     before(node.output?.firstToken(viewMode: .sourceAccurate), tokens: .break)
     return .visitChildren
   }
@@ -1872,6 +1866,14 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
     }
 
     let binOp = node.operatorOperand
+    if binOp.is(ArrowExprSyntax.self) {
+      // `ArrowExprSyntax` nodes occur when a function type is written in an expression context;
+      // for example, `let x = [(Int) throws -> Void]()`. We want to treat those consistently like
+      // we do other function return clauses and not treat them as regular binary operators, so
+      // handle that behavior there instead.
+      return .visitChildren
+    }
+
     let rhs = node.rightOperand
     maybeGroupAroundSubexpression(rhs, combiningOperator: binOp)
 
@@ -1985,9 +1987,8 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   }
 
   override func visit(_ node: ArrowExprSyntax) -> SyntaxVisitorContinueKind {
-    // The break before the `throws` keyword is inserted at the `InfixOperatorExpr` level so that it
-    // is placed in the correct relative position to the group surrounding the "operator".
-    after(node.effectSpecifiers?.throwsSpecifier, tokens: .break)
+    before(node.arrowToken, tokens: .break)
+    after(node.arrowToken, tokens: .space)
     return .visitChildren
   }
 
@@ -3260,8 +3261,8 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
       return true
     case .tryExpr(let tryExpr):
       return isCompoundExpression(tryExpr.expression)
-    case .tupleExpr(let tupleExpr) where tupleExpr.elementList.count == 1:
-      return isCompoundExpression(tupleExpr.elementList.first!.expression)
+    case .tupleExpr(let tupleExpr) where tupleExpr.elements.count == 1:
+      return isCompoundExpression(tupleExpr.elements.first!.expression)
     default:
       return false
     }
@@ -3295,7 +3296,7 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
   ///   not parenthesized.
   private func parenthesizedLeftmostExpr(of expr: ExprSyntax) -> TupleExprSyntax? {
     switch Syntax(expr).as(SyntaxEnum.self) {
-    case .tupleExpr(let tupleExpr) where tupleExpr.elementList.count == 1:
+    case .tupleExpr(let tupleExpr) where tupleExpr.elements.count == 1:
       return tupleExpr
     case .infixOperatorExpr(let infixOperatorExpr):
       return parenthesizedLeftmostExpr(of: infixOperatorExpr.leftOperand)
@@ -3441,7 +3442,7 @@ fileprivate final class TokenStreamCreator: SyntaxVisitor {
         )
       }
 
-      if let innerExpr = parenthesizedExpr.elementList.first?.expression,
+      if let innerExpr = parenthesizedExpr.elements.first?.expression,
         let stringLiteralExpr = innerExpr.as(StringLiteralExprSyntax.self),
         stringLiteralExpr.openQuote.tokenKind == .multilineStringQuote
       {

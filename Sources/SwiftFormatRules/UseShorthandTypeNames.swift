@@ -335,7 +335,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
       let tupleExprElementList = TupleExprElementListSyntax([tupleExprElement])
       let tupleExpr = TupleExprSyntax(
         leftParen: TokenSyntax.leftParenToken(leadingTrivia: leadingTrivia ?? []),
-        elementList: tupleExprElementList,
+        elements: tupleExprElementList,
         rightParen: TokenSyntax.rightParenToken())
       wrappedTypeExpr = ExprSyntax(tupleExpr)
     } else {
@@ -417,7 +417,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     case .functionType(let functionType):
       let result = makeFunctionTypeExpression(
         leftParen: functionType.leftParen,
-        argumentTypes: functionType.arguments,
+        parameters: functionType.parameters,
         rightParen: functionType.rightParen,
         effectSpecifiers: functionType.effectSpecifiers,
         arrow: functionType.output.arrow,
@@ -429,7 +429,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
       guard let elementExprs = expressionRepresentation(of: tupleType.elements) else { return nil }
       let result = TupleExprSyntax(
         leftParen: tupleType.leftParen,
-        elementList: elementExprs,
+        elements: elementExprs,
         rightParen: tupleType.rightParen)
       return ExprSyntax(result)
 
@@ -458,14 +458,14 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
 
   private func makeFunctionTypeExpression(
     leftParen: TokenSyntax,
-    argumentTypes: TupleTypeElementListSyntax,
+    parameters: TupleTypeElementListSyntax,
     rightParen: TokenSyntax,
     effectSpecifiers: TypeEffectSpecifiersSyntax?,
     arrow: TokenSyntax,
     returnType: TypeSyntax
   ) -> SequenceExprSyntax? {
     guard
-      let argumentTypeExprs = expressionRepresentation(of: argumentTypes),
+      let parameterExprs = expressionRepresentation(of: parameters),
       let returnTypeExpr = expressionRepresentation(of: returnType)
     else {
       return nil
@@ -473,7 +473,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
 
     let tupleExpr = TupleExprSyntax(
       leftParen: leftParen,
-      elementList: argumentTypeExprs,
+      elements: parameterExprs,
       rightParen: rightParen)
     let arrowExpr = ArrowExprSyntax(
       effectSpecifiers: effectSpecifiers,

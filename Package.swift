@@ -69,13 +69,18 @@ let package = Package(
       name: "SwiftFormatCore",
       dependencies: [
         "SwiftFormatConfiguration",
+        .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftOperators", package: "swift-syntax"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
       ]
     ),
     .target(
       name: "SwiftFormatRules",
-      dependencies: ["SwiftFormatCore", "SwiftFormatConfiguration"]
+      dependencies: [
+        "SwiftFormatCore",
+        "SwiftFormatConfiguration",
+        .product(name: "Markdown", package: "swift-markdown"),
+      ]
     ),
     .target(
       name: "SwiftFormatPrettyPrint",
@@ -161,7 +166,9 @@ let package = Package(
       dependencies: [
         "SwiftFormatConfiguration",
         "SwiftFormatCore",
+        .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
       ]
     ),
@@ -223,6 +230,10 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
       from: "1.2.2"
     ),
     .package(
+      url: "https://github.com/apple/swift-markdown.git",
+      from: "0.2.0"
+    ),
+    .package(
       url: "https://github.com/apple/swift-syntax.git",
       branch: "main"
     ),
@@ -230,6 +241,7 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
 } else {
   package.dependencies += [
     .package(path: "../swift-argument-parser"),
+    .package(path: "../swift-markdown"),
     .package(path: "../swift-syntax"),
   ]
 }

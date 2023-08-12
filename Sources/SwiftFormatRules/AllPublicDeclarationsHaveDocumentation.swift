@@ -65,7 +65,7 @@ public final class AllPublicDeclarationsHaveDocumentation: SyntaxLintRule {
     return .skipChildren
   }
 
-  public override func visit(_ node: TypealiasDeclSyntax) -> SyntaxVisitorContinueKind {
+  public override func visit(_ node: TypeAliasDeclSyntax) -> SyntaxVisitorContinueKind {
     diagnoseMissingDocComment(DeclSyntax(node), name: node.name.text, modifiers: node.modifiers)
     return .skipChildren
   }
@@ -73,10 +73,10 @@ public final class AllPublicDeclarationsHaveDocumentation: SyntaxLintRule {
   private func diagnoseMissingDocComment(
     _ decl: DeclSyntax,
     name: String,
-    modifiers: ModifierListSyntax?
+    modifiers: DeclModifierListSyntax?
   ) {
     guard
-      documentationCommentText(extractedFrom: decl.leadingTrivia) == nil,
+      DocumentationCommentText(extractedFrom: decl.leadingTrivia) == nil,
       let mods = modifiers, mods.has(modifier: "public") && !mods.has(modifier: "override")
     else {
       return

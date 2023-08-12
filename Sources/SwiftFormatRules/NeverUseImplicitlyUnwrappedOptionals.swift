@@ -40,11 +40,9 @@ public final class NeverUseImplicitlyUnwrappedOptionals: SyntaxLintRule {
   public override func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
     guard context.importsXCTest == .doesNotImportXCTest else { return .skipChildren }
     // Ignores IBOutlet variables
-    if let attributes = node.attributes {
-      for attribute in attributes {
-        if (attribute.as(AttributeSyntax.self))?.attributeName.as(SimpleTypeIdentifierSyntax.self)?.name.text == "IBOutlet" {
-          return .skipChildren
-        }
+    for attribute in node.attributes {
+      if (attribute.as(AttributeSyntax.self))?.attributeName.as(IdentifierTypeSyntax.self)?.name.text == "IBOutlet" {
+        return .skipChildren
       }
     }
     // Finds type annotation for variable(s)
@@ -65,6 +63,6 @@ public final class NeverUseImplicitlyUnwrappedOptionals: SyntaxLintRule {
 
 extension Finding.Message {
   public static func doNotUseImplicitUnwrapping(identifier: String) -> Finding.Message {
-    "use \(identifier) or \(identifier)? instead of \(identifier)!"
+    "use '\(identifier)' or '\(identifier)?' instead of '\(identifier)!'"
   }
 }

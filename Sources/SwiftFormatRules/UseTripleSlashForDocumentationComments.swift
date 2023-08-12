@@ -60,7 +60,7 @@ public final class UseTripleSlashForDocumentationComments: SyntaxFormatRule {
     return convertDocBlockCommentToDocLineComment(DeclSyntax(node))
   }
 
-  public override func visit(_ node: TypealiasDeclSyntax) -> DeclSyntax {
+  public override func visit(_ node: TypeAliasDeclSyntax) -> DeclSyntax {
     return convertDocBlockCommentToDocLineComment(DeclSyntax(node))
   }
 
@@ -68,11 +68,15 @@ public final class UseTripleSlashForDocumentationComments: SyntaxFormatRule {
     return convertDocBlockCommentToDocLineComment(DeclSyntax(node))
   }
 
-  /// In the case the given declaration has a docBlockComment as it's documentation
-  /// comment. Returns the declaration with the docBlockComment converted to
-  /// a docLineComment.
+  /// If the declaration has a doc block comment, return the declaration with the comment rewritten
+  /// as a line comment.
+  ///
+  /// If the declaration had no comment or had only line comments, it is returned unchanged.
   private func convertDocBlockCommentToDocLineComment(_ decl: DeclSyntax) -> DeclSyntax {
-    guard let commentInfo = documentationCommentText(extractedFrom: decl.leadingTrivia) else {
+    guard
+      let commentInfo = DocumentationCommentText(extractedFrom: decl.leadingTrivia),
+      commentInfo.introducer != .line
+    else {
       return decl
     }
 
@@ -96,11 +100,9 @@ public final class UseTripleSlashForDocumentationComments: SyntaxFormatRule {
       pieces.append(.newlines(1))
     }
 
-    return replaceTrivia(
-      on: decl,
-      token: decl.firstToken(viewMode: .sourceAccurate),
-      leadingTrivia: Trivia(pieces: pieces)
-    )
+    var decl = decl
+    decl.leadingTrivia = Trivia(pieces: pieces)
+    return decl
   }
 }
 

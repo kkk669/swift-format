@@ -359,13 +359,10 @@ fileprivate func convertToCodeBlockItems(lines: [Line]) -> [CodeBlockItemSyntax]
     func append(codeBlockItem: CodeBlockItemSyntax) {
       // Comments and newlines are always located in the leading trivia of an AST node, so we need
       // not deal with trailing trivia.
-      output.append(
-        replaceTrivia(
-          on: codeBlockItem,
-          token: codeBlockItem.firstToken(viewMode: .sourceAccurate),
-          leadingTrivia: Trivia(pieces: triviaBuffer)
-        )
-      )
+      var codeBlockItem = codeBlockItem
+      codeBlockItem.leadingTrivia = Trivia(pieces: triviaBuffer)
+      output.append(codeBlockItem)
+
       triviaBuffer = []
       triviaBuffer += line.trailingTrivia
     }
@@ -517,7 +514,7 @@ fileprivate class Line {
 
   /// Returns a `LineType` the represents the type of import from the given import decl.
   private func importType(of importDecl: ImportDeclSyntax) -> LineType {
-    if let attr = importDecl.attributes?.firstToken(viewMode: .sourceAccurate),
+    if let attr = importDecl.attributes.firstToken(viewMode: .sourceAccurate),
       attr.tokenKind == .atSign,
       attr.nextToken(viewMode: .sourceAccurate)?.text == "testable"
     {
@@ -579,7 +576,7 @@ extension Finding.Message {
     "place \(before) imports before \(after) imports"
   }
 
-  public static let removeDuplicateImport: Finding.Message = "remove duplicate import"
+  public static let removeDuplicateImport: Finding.Message = "remove this duplicate import"
 
   public static let sortImports: Finding.Message = "sort import statements lexicographically"
 }

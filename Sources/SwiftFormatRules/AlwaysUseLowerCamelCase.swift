@@ -46,7 +46,7 @@ public final class AlwaysUseLowerCamelCase: SyntaxLintRule {
     // Don't diagnose any issues when the variable is overriding, because this declaration can't
     // rename the variable. If the user analyzes the code where the variable is really declared,
     // then the diagnostic can be raised for just that location.
-    if let modifiers = node.modifiers, modifiers.has(modifier: "override") {
+    if node.modifiers.has(modifier: "override") {
       return .visitChildren
     }
 
@@ -71,7 +71,7 @@ public final class AlwaysUseLowerCamelCase: SyntaxLintRule {
 
   public override func visit(_ node: ClosureSignatureSyntax) -> SyntaxVisitorContinueKind {
     if let input = node.parameterClause {
-      if let closureParamList = input.as(ClosureParamListSyntax.self) {
+      if let closureParamList = input.as(ClosureShorthandParameterListSyntax.self) {
         for param in closureParamList {
           diagnoseLowerCamelCaseViolations(
             param.name, allowUnderscores: false, description: identifierDescription(for: node))
@@ -96,7 +96,7 @@ public final class AlwaysUseLowerCamelCase: SyntaxLintRule {
               secondName, allowUnderscores: false, description: identifierDescription(for: node))
           }
         }
-      } else if let parameterClause = input.as(ParameterClauseSyntax.self) {
+      } else if let parameterClause = input.as(FunctionParameterClauseSyntax.self) {
         for param in parameterClause.parameters {
           diagnoseLowerCamelCaseViolations(
             param.firstName, allowUnderscores: false, description: identifierDescription(for: node))
@@ -114,7 +114,7 @@ public final class AlwaysUseLowerCamelCase: SyntaxLintRule {
     // Don't diagnose any issues when the function is overriding, because this declaration can't
     // rename the function. If the user analyzes the code where the function is really declared,
     // then the diagnostic can be raised for just that location.
-    if let modifiers = node.modifiers, modifiers.has(modifier: "override") {
+    if node.modifiers.has(modifier: "override") {
       return .visitChildren
     }
 
@@ -146,14 +146,14 @@ public final class AlwaysUseLowerCamelCase: SyntaxLintRule {
   /// Collects methods that look like XCTest test case methods from the given member list, inserting
   /// them into the given set.
   private func collectTestMethods(
-    from members: MemberDeclListSyntax,
+    from members: MemberBlockItemListSyntax,
     into set: inout Set<FunctionDeclSyntax>
   ) {
     for member in members {
       if let ifConfigDecl = member.decl.as(IfConfigDeclSyntax.self) {
         // Recurse into any conditional member lists and collect their test methods as well.
         for clause in ifConfigDecl.clauses {
-          if let clauseMembers = clause.elements?.as(MemberDeclListSyntax.self) {
+          if let clauseMembers = clause.elements?.as(MemberBlockItemListSyntax.self) {
             collectTestMethods(from: clauseMembers, into: &set)
           }
         }
@@ -203,7 +203,7 @@ fileprivate func identifierDescription<NodeType: SyntaxProtocol>(for node: NodeT
 extension ReturnClauseSyntax {
   /// Whether this return clause specifies an explicit `Void` return type.
   fileprivate var isVoid: Bool {
-    if let returnTypeIdentifier = type.as(SimpleTypeIdentifierSyntax.self) {
+    if let returnTypeIdentifier = type.as(IdentifierTypeSyntax.self) {
       return returnTypeIdentifier.name.text == "Void"
     }
     if let returnTypeTuple = type.as(TupleTypeSyntax.self) {
@@ -217,6 +217,6 @@ extension Finding.Message {
   public static func nameMustBeLowerCamelCase(
     _ name: String, description: String
   ) -> Finding.Message {
-    "rename \(description) '\(name)' using lower-camel-case"
+    "rename the \(description) '\(name)' using lowerCamelCase"
   }
 }

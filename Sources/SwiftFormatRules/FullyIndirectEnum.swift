@@ -24,8 +24,7 @@ public final class FullyIndirectEnum: SyntaxFormatRule {
 
   public override func visit(_ node: EnumDeclSyntax) -> DeclSyntax {
     let enumMembers = node.memberBlock.members
-    guard let enumModifiers = node.modifiers,
-      !enumModifiers.has(modifier: "indirect"),
+    guard !node.modifiers.has(modifier: "indirect"),
       allCasesAreIndirect(in: enumMembers)
     else {
       return DeclSyntax(node)
@@ -35,18 +34,16 @@ public final class FullyIndirectEnum: SyntaxFormatRule {
 
     // Removes 'indirect' keyword from cases, reformats
     let newMembers = enumMembers.map {
-      (member: MemberDeclListItemSyntax) -> MemberDeclListItemSyntax in
+      (member: MemberBlockItemSyntax) -> MemberBlockItemSyntax in
       guard let caseMember = member.decl.as(EnumCaseDeclSyntax.self),
-        let modifiers = caseMember.modifiers,
-        modifiers.has(modifier: "indirect"),
-        let firstModifier = modifiers.first
+        caseMember.modifiers.has(modifier: "indirect"),
+        let firstModifier = caseMember.modifiers.first
       else {
         return member
       }
 
-      let newCase = caseMember.with(\.modifiers, modifiers.remove(name: "indirect"))
-      let formattedCase = formatCase(
-        unformattedCase: newCase, leadingTrivia: firstModifier.leadingTrivia)
+      let newCase = caseMember.with(\.modifiers, caseMember.modifiers.remove(name: "indirect"))
+      let formattedCase = rearrangeLeadingTrivia(firstModifier.leadingTrivia, on: newCase)
       return member.with(\.decl, DeclSyntax(formattedCase))
     }
 
@@ -55,34 +52,35 @@ public final class FullyIndirectEnum: SyntaxFormatRule {
     // line breaks/comments/indentation.
     let firstTok = node.firstToken(viewMode: .sourceAccurate)!
     let leadingTrivia: Trivia
-    let newEnumDecl: EnumDeclSyntax
+    var newEnumDecl = node
 
     if firstTok.tokenKind == .keyword(.enum) {
       leadingTrivia = firstTok.leadingTrivia
-      newEnumDecl = replaceTrivia(
-        on: node, token: node.firstToken(viewMode: .sourceAccurate), leadingTrivia: [])
+      newEnumDecl.leadingTrivia = []
     } else {
       leadingTrivia = []
-      newEnumDecl = node
     }
 
     let newModifier = DeclModifierSyntax(
       name: TokenSyntax.identifier(
         "indirect", leadingTrivia: leadingTrivia, trailingTrivia: .spaces(1)), detail: nil)
 
-    let newMemberBlock = node.memberBlock.with(\.members, MemberDeclListSyntax(newMembers))
-    return DeclSyntax(newEnumDecl.addModifier(newModifier).with(\.memberBlock, newMemberBlock))
+    let newMemberBlock = node.memberBlock.with(\.members, MemberBlockItemListSyntax(newMembers))
+    return DeclSyntax(
+      newEnumDecl
+        .with(\.modifiers, newEnumDecl.modifiers + [newModifier])
+        .with(\.memberBlock, newMemberBlock))
   }
 
   /// Returns a value indicating whether all enum cases in the given list are indirect.
   ///
   /// Note that if the enum has no cases, this returns false.
-  private func allCasesAreIndirect(in members: MemberDeclListSyntax) -> Bool {
+  private func allCasesAreIndirect(in members: MemberBlockItemListSyntax) -> Bool {
     var hadCases = false
     for member in members {
       if let caseMember = member.decl.as(EnumCaseDeclSyntax.self) {
         hadCases = true
-        guard let modifiers = caseMember.modifiers, modifiers.has(modifier: "indirect") else {
+        guard caseMember.modifiers.has(modifier: "indirect") else {
           return false
         }
       }
@@ -91,24 +89,28 @@ public final class FullyIndirectEnum: SyntaxFormatRule {
   }
 
   /// Transfers given leading trivia to the first token in the case declaration.
-  private func formatCase(
-    unformattedCase: EnumCaseDeclSyntax,
-    leadingTrivia: Trivia?
+  private func rearrangeLeadingTrivia(
+    _ leadingTrivia: Trivia,
+    on enumCaseDecl: EnumCaseDeclSyntax
   ) -> EnumCaseDeclSyntax {
-    if let modifiers = unformattedCase.modifiers, let first = modifiers.first {
-      return replaceTrivia(
-        on: unformattedCase, token: first.firstToken(viewMode: .sourceAccurate), leadingTrivia: leadingTrivia
-      )
+    var formattedCase = enumCaseDecl
+
+    if var firstModifier = formattedCase.modifiers.first {
+      // If the case has modifiers, attach the leading trivia to the first one.
+      firstModifier.leadingTrivia = leadingTrivia
+      formattedCase.modifiers[formattedCase.modifiers.startIndex] = firstModifier
+      formattedCase.modifiers = formattedCase.modifiers
     } else {
-      return replaceTrivia(
-        on: unformattedCase, token: unformattedCase.caseKeyword, leadingTrivia: leadingTrivia
-      )
+      // Otherwise, attach the trivia to the `case` keyword itself.
+      formattedCase.caseKeyword.leadingTrivia = leadingTrivia
     }
+
+    return formattedCase
   }
 }
 
 extension Finding.Message {
   public static func moveIndirectKeywordToEnumDecl(name: String) -> Finding.Message {
-    "move 'indirect' to \(name) enum declaration when all cases are indirect"
+    "move 'indirect' before the enum declaration '\(name)' when all cases are indirect"
   }
 }

@@ -46,16 +46,13 @@ public final class NoParensAroundConditions: SyntaxFormatRule {
 
     guard
       let visitedTuple = visit(tuple).as(TupleExprSyntax.self),
-      let visitedExpr = visitedTuple.elements.first?.expression
+      var visitedExpr = visitedTuple.elements.first?.expression
     else {
       return expr
     }
-    return replaceTrivia(
-      on: visitedExpr,
-      token: visitedExpr.lastToken(viewMode: .sourceAccurate),
-      leadingTrivia: visitedTuple.leftParen.leadingTrivia,
-      trailingTrivia: visitedTuple.rightParen.trailingTrivia
-    )
+    visitedExpr.leadingTrivia = visitedTuple.leftParen.leadingTrivia
+    visitedExpr.trailingTrivia = visitedTuple.rightParen.trailingTrivia
+    return visitedExpr
   }
 
   public override func visit(_ node: IfExprSyntax) -> ExprSyntax {
@@ -80,16 +77,16 @@ public final class NoParensAroundConditions: SyntaxFormatRule {
 
   /// FIXME(hbh): Parsing for SwitchExprSyntax is not implemented.
   public override func visit(_ node: SwitchExprSyntax) -> ExprSyntax {
-    guard let tup = node.expression.as(TupleExprSyntax.self),
+    guard let tup = node.subject.as(TupleExprSyntax.self),
       tup.elements.firstAndOnly != nil
     else {
       return super.visit(node)
     }
     return ExprSyntax(
-      node.with(\.expression, extractExpr(tup)).with(\.cases, visit(node.cases)))
+      node.with(\.subject, extractExpr(tup)).with(\.cases, visit(node.cases)))
   }
 
-  public override func visit(_ node: RepeatWhileStmtSyntax) -> StmtSyntax {
+  public override func visit(_ node: RepeatStmtSyntax) -> StmtSyntax {
     guard let tup = node.condition.as(TupleExprSyntax.self),
       tup.elements.firstAndOnly != nil
     else {
@@ -104,5 +101,5 @@ public final class NoParensAroundConditions: SyntaxFormatRule {
 
 extension Finding.Message {
   public static let removeParensAroundExpression: Finding.Message =
-    "remove parentheses around this expression"
+    "remove the parentheses around this expression"
 }

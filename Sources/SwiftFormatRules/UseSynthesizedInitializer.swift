@@ -31,11 +31,7 @@ public final class UseSynthesizedInitializer: SyntaxLintRule {
       let member = memberItem.decl
       // Collect all stored variables into a list
       if let varDecl = member.as(VariableDeclSyntax.self) {
-        guard let modifiers = varDecl.modifiers else {
-          storedProperties.append(varDecl)
-          continue
-        }
-        guard !modifiers.has(modifier: "static") else { continue }
+        guard !varDecl.modifiers.has(modifier: "static") else { continue }
         storedProperties.append(varDecl)
         // Collect any possible redundant initializers into a list
       } else if let initDecl = member.as(InitializerDeclSyntax.self) {
@@ -83,7 +79,7 @@ public final class UseSynthesizedInitializer: SyntaxLintRule {
   ///   - properties: The properties from the enclosing type.
   /// - Returns: Whether the initializer has the same access level as the synthesized initializer.
   private func matchesAccessLevel(
-    modifiers: ModifierListSyntax?, properties: [VariableDeclSyntax]
+    modifiers: DeclModifierListSyntax?, properties: [VariableDeclSyntax]
   ) -> Bool {
     let synthesizedAccessLevel = synthesizedInitAccessLevel(using: properties)
     let accessLevel = modifiers?.accessLevelModifier
@@ -117,9 +113,9 @@ public final class UseSynthesizedInitializer: SyntaxLintRule {
       // doesn't match the memberwise initializer.
       let isVarDecl = property.bindingSpecifier.tokenKind == .keyword(.var)
       if isVarDecl, let initializer = property.firstInitializer {
-        guard let defaultArg = parameter.defaultArgument else { return false }
+        guard let defaultArg = parameter.defaultValue else { return false }
         guard initializer.value.description == defaultArg.value.description else { return false }
-      } else if parameter.defaultArgument != nil {
+      } else if parameter.defaultValue != nil {
         return false
       }
 
@@ -143,7 +139,7 @@ public final class UseSynthesizedInitializer: SyntaxLintRule {
     for statement in initBody.statements {
       guard
         let expr = statement.item.as(InfixOperatorExprSyntax.self),
-        expr.operatorOperand.is(AssignmentExprSyntax.self)
+        expr.operator.is(AssignmentExprSyntax.self)
       else {
         return false
       }
@@ -159,13 +155,13 @@ public final class UseSynthesizedInitializer: SyntaxLintRule {
           return false
         }
 
-        leftName = memberAccessExpr.name.text
+        leftName = memberAccessExpr.declName.baseName.text
       } else {
         return false
       }
 
-      if let identifierExpr = expr.rightOperand.as(IdentifierExprSyntax.self) {
-        rightName = identifierExpr.identifier.text
+      if let identifierExpr = expr.rightOperand.as(DeclReferenceExprSyntax.self) {
+        rightName = identifierExpr.baseName.text
       } else {
         return false
       }
@@ -186,7 +182,7 @@ public final class UseSynthesizedInitializer: SyntaxLintRule {
 
 extension Finding.Message {
   public static let removeRedundantInitializer: Finding.Message =
-    "remove initializer and use the synthesized initializer"
+    "remove this explicit initializer, which is identical to the compiler-synthesized initializer"
 }
 
 /// Defines the access levels which may be assigned to a synthesized memberwise initializer.
@@ -208,13 +204,11 @@ fileprivate enum AccessLevel {
 fileprivate func synthesizedInitAccessLevel(using properties: [VariableDeclSyntax]) -> AccessLevel {
   var hasFileprivate = false
   for property in properties {
-    guard let modifiers = property.modifiers else { continue }
-
     // Private takes precedence, so finding 1 private property defines the access level.
-    if modifiers.contains(where: {$0.name.tokenKind == .keyword(.private) && $0.detail == nil}) {
+    if property.modifiers.contains(where: {$0.name.tokenKind == .keyword(.private) && $0.detail == nil}) {
       return .private
     }
-    if modifiers.contains(where: {$0.name.tokenKind == .keyword(.fileprivate) && $0.detail == nil}) {
+    if property.modifiers.contains(where: {$0.name.tokenKind == .keyword(.fileprivate) && $0.detail == nil}) {
       hasFileprivate = true
       // Can't break here because a later property might be private.
     }

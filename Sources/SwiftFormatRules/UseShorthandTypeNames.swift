@@ -22,7 +22,7 @@ import SwiftSyntax
 ///         converted to `[Element]`.
 public final class UseShorthandTypeNames: SyntaxFormatRule {
 
-  public override func visit(_ node: SimpleTypeIdentifierSyntax) -> TypeSyntax {
+  public override func visit(_ node: IdentifierTypeSyntax) -> TypeSyntax {
     // Ignore types that don't have generic arguments.
     guard let genericArgumentClause = node.genericArgumentClause else {
       return super.visit(node)
@@ -34,7 +34,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     // `Foo<Array<Int>>.Bar` can still be transformed to `Foo<[Int]>.Bar` because the member
     // reference is not directly attached to the type that will be transformed, but we need to visit
     // the children so that we don't skip this).
-    guard let parent = node.parent, !parent.is(MemberTypeIdentifierSyntax.self) else {
+    guard let parent = node.parent, !parent.is(MemberTypeSyntax.self) else {
       return super.visit(node)
     }
 
@@ -98,7 +98,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     return TypeSyntax(result)
   }
 
-  public override func visit(_ node: SpecializeExprSyntax) -> ExprSyntax {
+  public override func visit(_ node: GenericSpecializationExprSyntax) -> ExprSyntax {
     // `SpecializeExpr`s are found in the syntax tree when a generic type is encountered in an
     // expression context, such as `Array<Int>()`. In these situations, the corresponding array and
     // dictionary shorthand nodes will be expression nodes, not type nodes, so we may need to
@@ -106,7 +106,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     // appropriate equivalent.
 
     // Ignore nodes where the expression being specialized isn't a simple identifier.
-    guard let expression = node.expression.as(IdentifierExprSyntax.self) else {
+    guard let expression = node.expression.as(DeclReferenceExprSyntax.self) else {
       return super.visit(node)
     }
 
@@ -130,7 +130,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     let (leadingTrivia, trailingTrivia) = boundaryTrivia(around: Syntax(node))
     let newNode: ExprSyntax?
 
-    switch expression.identifier.text {
+    switch expression.baseName.text {
     case "Array":
       guard let typeArgument = genericArgumentList.firstAndOnly else {
         newNode = nil
@@ -171,7 +171,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     }
 
     if let newNode = newNode {
-      diagnose(.useTypeShorthand(type: expression.identifier.text), on: expression)
+      diagnose(.useTypeShorthand(type: expression.baseName.text), on: expression)
       return newNode
     }
 
@@ -236,27 +236,21 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
   ) -> TypeSyntax {
     var wrappedType = wrappedType
 
-    if let functionType = wrappedType.as(FunctionTypeSyntax.self) {
-      // Function types must be wrapped as a tuple before using shorthand optional syntax,
-      // otherwise the "?" applies to the return type instead of the function type. Attach the
-      // leading trivia to the left-paren that we're adding in this case.
-      let tupleTypeElement = TupleTypeElementSyntax(
-        inoutKeyword: nil, firstName: nil, secondName: nil, colon: nil, type: TypeSyntax(functionType),
-        ellipsis: nil, trailingComma: nil)
-      let tupleTypeElementList = TupleTypeElementListSyntax([tupleTypeElement])
-      let tupleType = TupleTypeSyntax(
-        leftParen: TokenSyntax.leftParenToken(leadingTrivia: leadingTrivia),
-        elements: tupleTypeElementList,
-        rightParen: TokenSyntax.rightParenToken())
-      wrappedType = TypeSyntax(tupleType)
-    } else {
+    // Function types and some-or-any types must be wrapped in parentheses before using shorthand
+    // optional syntax, otherwise the "?" will bind incorrectly (in the function case it binds to
+    // only the result, and in the some-or-any case it only binds to the child protocol). Attach the
+    // leading trivia to the left-paren that we're adding in these cases.
+    switch Syntax(wrappedType).as(SyntaxEnum.self) {
+    case .functionType(let functionType):
+      wrappedType = parenthesizedType(functionType, leadingTrivia: leadingTrivia)
+    case .someOrAnyType(let someOrAnyType):
+      wrappedType = parenthesizedType(someOrAnyType, leadingTrivia: leadingTrivia)
+    default:
       // Otherwise, the argument type can safely become an optional by simply appending a "?", but
       // we need to transfer the leading trivia from the original `Optional` token over to it.
       // By doing so, something like `/* comment */ Optional<Foo>` will become `/* comment */ Foo?`
       // instead of discarding the comment.
-      wrappedType =
-        replaceTrivia(
-          on: wrappedType, token: wrappedType.firstToken(viewMode: .sourceAccurate), leadingTrivia: leadingTrivia)
+      wrappedType.leadingTrivia = leadingTrivia
     }
 
     let optionalType = OptionalTypeSyntax(
@@ -318,38 +312,56 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
   /// key type or value type does not have a valid expression representation.
   private func makeOptionalTypeExpression(
     wrapping wrappedType: TypeSyntax,
-    leadingTrivia: Trivia? = nil,
+    leadingTrivia: Trivia = [],
     questionMark: TokenSyntax
   ) -> OptionalChainingExprSyntax? {
     guard var wrappedTypeExpr = expressionRepresentation(of: wrappedType) else { return nil }
 
-    if wrappedType.is(FunctionTypeSyntax.self) {
-      // Function types must be wrapped as a tuple before using shorthand optional syntax,
-      // otherwise the "?" applies to the return type instead of the function type. Attach the
-      // leading trivia to the left-paren that we're adding in this case.
-      let tupleExprElement =
-        TupleExprElementSyntax(
-          label: nil, colon: nil, expression: wrappedTypeExpr, trailingComma: nil)
-      let tupleExprElementList = TupleExprElementListSyntax([tupleExprElement])
-      let tupleExpr = TupleExprSyntax(
-        leftParen: TokenSyntax.leftParenToken(leadingTrivia: leadingTrivia ?? []),
-        elements: tupleExprElementList,
-        rightParen: TokenSyntax.rightParenToken())
-      wrappedTypeExpr = ExprSyntax(tupleExpr)
-    } else {
+    // Function types and some-or-any types must be wrapped in parentheses before using shorthand
+    // optional syntax, otherwise the "?" will bind incorrectly (in the function case it binds to
+    // only the result, and in the some-or-any case it only binds to the child protocol). Attach the
+    // leading trivia to the left-paren that we're adding in these cases.
+    switch Syntax(wrappedType).as(SyntaxEnum.self) {
+    case .functionType, .someOrAnyType:
+      wrappedTypeExpr = parenthesizedExpr(wrappedTypeExpr, leadingTrivia: leadingTrivia)
+    default:
       // Otherwise, the argument type can safely become an optional by simply appending a "?". If
       // we were given leading trivia from another node (for example, from `Optional` when
       // converting a long-form to short-form), we need to transfer it over. By doing so, something
       // like `/* comment */ Optional<Foo>` will become `/* comment */ Foo?` instead of discarding
       // the comment.
-      wrappedTypeExpr =
-        replaceTrivia(
-          on: wrappedTypeExpr, token: wrappedTypeExpr.firstToken(viewMode: .sourceAccurate), leadingTrivia: leadingTrivia)
+      wrappedTypeExpr.leadingTrivia = leadingTrivia
     }
 
     return OptionalChainingExprSyntax(
       expression: wrappedTypeExpr,
       questionMark: questionMark)
+  }
+
+  /// Returns the given type wrapped in parentheses.
+  private func parenthesizedType<TypeNode: TypeSyntaxProtocol>(
+    _ typeToWrap: TypeNode,
+    leadingTrivia: Trivia
+  ) -> TypeSyntax {
+    let tupleTypeElement = TupleTypeElementSyntax(type: TypeSyntax(typeToWrap))
+    let tupleType = TupleTypeSyntax(
+      leftParen: .leftParenToken(leadingTrivia: leadingTrivia),
+      elements: TupleTypeElementListSyntax([tupleTypeElement]),
+      rightParen: .rightParenToken())
+    return TypeSyntax(tupleType)
+  }
+
+  /// Returns the given expression wrapped in parentheses.
+  private func parenthesizedExpr<ExprNode: ExprSyntaxProtocol>(
+    _ exprToWrap: ExprNode,
+    leadingTrivia: Trivia
+  ) -> ExprSyntax {
+    let tupleExprElement = LabeledExprSyntax(expression: exprToWrap)
+    let tupleExpr = TupleExprSyntax(
+      leftParen: .leftParenToken(leadingTrivia: leadingTrivia),
+      elements: LabeledExprListSyntax([tupleExprElement]),
+      rightParen: .rightParenToken())
+    return ExprSyntax(tupleExpr)
   }
 
   /// Returns an `ExprSyntax` that is syntactically equivalent to the given `TypeSyntax`, or nil if
@@ -361,16 +373,16 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
   private func expressionRepresentation(of type: TypeSyntax) -> ExprSyntax? {
     switch Syntax(type).as(SyntaxEnum.self) {
     case .identifierType(let simpleTypeIdentifier):
-      let identifierExpr = IdentifierExprSyntax(
-        identifier: simpleTypeIdentifier.name,
-        declNameArguments: nil)
+      let identifierExpr = DeclReferenceExprSyntax(
+        baseName: simpleTypeIdentifier.name,
+        argumentNames: nil)
 
       // If the type has a generic argument clause, we need to construct a `SpecializeExpr` to wrap
       // the identifier and the generic arguments. Otherwise, we can return just the
       // `IdentifierExpr` itself.
       if let genericArgumentClause = simpleTypeIdentifier.genericArgumentClause {
         let newGenericArgumentClause = visit(genericArgumentClause)
-        let result = SpecializeExprSyntax(
+        let result = GenericSpecializationExprSyntax(
           expression: ExprSyntax(identifierExpr),
           genericArgumentClause: newGenericArgumentClause)
         return ExprSyntax(result)
@@ -385,8 +397,8 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
       let result = MemberAccessExprSyntax(
         base: baseType,
         period: memberTypeIdentifier.period,
-        name: memberTypeIdentifier.name,
-        declNameArguments: nil)
+        name: memberTypeIdentifier.name
+      )
       return ExprSyntax(result)
 
     case .arrayType(let arrayType):
@@ -408,7 +420,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
     case .optionalType(let optionalType):
       let result = makeOptionalTypeExpression(
         wrapping: optionalType.wrappedType,
-        leadingTrivia: optionalType.firstToken(viewMode: .sourceAccurate)?.leadingTrivia,
+        leadingTrivia: optionalType.firstToken(viewMode: .sourceAccurate)?.leadingTrivia ?? [],
         questionMark: optionalType.questionMark)
       return ExprSyntax(result)
 
@@ -431,27 +443,30 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
         rightParen: tupleType.rightParen)
       return ExprSyntax(result)
 
+    case .someOrAnyType(let someOrAnyType):
+      return ExprSyntax(TypeExprSyntax(type: someOrAnyType))
+
     default:
       return nil
     }
   }
 
   private func expressionRepresentation(of tupleTypeElements: TupleTypeElementListSyntax)
-    -> TupleExprElementListSyntax?
+    -> LabeledExprListSyntax?
   {
     guard !tupleTypeElements.isEmpty else { return nil }
 
-    var exprElements = [TupleExprElementSyntax]()
+    var exprElements = [LabeledExprSyntax]()
     for typeElement in tupleTypeElements {
       guard let elementExpr = expressionRepresentation(of: typeElement.type) else { return nil }
       exprElements.append(
-        TupleExprElementSyntax(
-          label: typeElement.name,
+        LabeledExprSyntax(
+          label: typeElement.firstName,
           colon: typeElement.colon,
           expression: elementExpr,
           trailingComma: typeElement.trailingComma))
     }
-    return TupleExprElementListSyntax(exprElements)
+    return LabeledExprListSyntax(exprElements)
   }
 
   private func makeFunctionTypeExpression(
@@ -499,19 +514,18 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
   /// Returns true if the given pattern binding represents a stored property/variable (as opposed to
   /// a computed property/variable).
   private func isStoredProperty(_ node: PatternBindingSyntax) -> Bool {
-    guard let accessor = node.accessors else {
+    guard let accessor = node.accessorBlock else {
       // If it has no accessors at all, it is definitely a stored property.
       return true
     }
 
-    guard let accessorBlock = accessor.as(AccessorBlockSyntax.self) else {
+    guard case .accessors(let accessors) = accessor.accessors else {
       // If the accessor isn't an `AccessorBlockSyntax`, then it is a `CodeBlockSyntax`; i.e., the
       // accessor an implicit `get`. So, it is definitely not a stored property.
-      assert(accessor.is(CodeBlockSyntax.self))
       return false
     }
 
-    for accessorDecl in accessorBlock.accessors {
+    for accessorDecl in accessors {
       // Look for accessors that indicate that this is a computed property. If none are found, then
       // it is a stored property (e.g., having only observers like `willSet/didSet`).
       switch accessorDecl.accessorSpecifier.tokenKind {
@@ -534,7 +548,7 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
 
   /// Returns true if the given type identifier node represents the type of a mutable variable or
   /// stored property that does not have an initializer clause.
-  private func isTypeOfUninitializedStoredVar(_ node: SimpleTypeIdentifierSyntax) -> Bool {
+  private func isTypeOfUninitializedStoredVar(_ node: IdentifierTypeSyntax) -> Bool {
     if let typeAnnotation = node.parent?.as(TypeAnnotationSyntax.self),
       let patternBinding = nearestAncestor(of: typeAnnotation, type: PatternBindingSyntax.self),
       isStoredProperty(patternBinding),
@@ -565,6 +579,6 @@ public final class UseShorthandTypeNames: SyntaxFormatRule {
 
 extension Finding.Message {
   public static func useTypeShorthand(type: String) -> Finding.Message {
-    "use \(type) type shorthand form"
+    "use shorthand syntax for this '\(type)' type"
   }
 }

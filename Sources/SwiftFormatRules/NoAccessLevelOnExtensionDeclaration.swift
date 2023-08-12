@@ -25,8 +25,8 @@ import SwiftSyntax
 public final class NoAccessLevelOnExtensionDeclaration: SyntaxFormatRule {
 
   public override func visit(_ node: ExtensionDeclSyntax) -> DeclSyntax {
-    guard let modifiers = node.modifiers, modifiers.count != 0 else { return DeclSyntax(node) }
-    guard let accessKeyword = modifiers.accessLevelModifier else { return DeclSyntax(node) }
+    guard !node.modifiers.isEmpty else { return DeclSyntax(node) }
+    guard let accessKeyword = node.modifiers.accessLevelModifier else { return DeclSyntax(node) }
 
     let keywordKind = accessKeyword.name.tokenKind
     switch keywordKind {
@@ -44,16 +44,14 @@ public final class NoAccessLevelOnExtensionDeclaration: SyntaxFormatRule {
         accessKeywordToAdd = accessKeyword
       }
 
-      let newMembers = MemberDeclBlockSyntax(
+      let newMembers = MemberBlockSyntax(
         leftBrace: node.memberBlock.leftBrace,
         members: addMemberAccessKeywords(memDeclBlock: node.memberBlock, keyword: accessKeywordToAdd),
         rightBrace: node.memberBlock.rightBrace)
-      let newKeyword = replaceTrivia(
-        on: node.extensionKeyword,
-        token: node.extensionKeyword,
-        leadingTrivia: accessKeyword.leadingTrivia)
+      var newKeyword = node.extensionKeyword
+      newKeyword.leadingTrivia = accessKeyword.leadingTrivia
       let result = node.with(\.memberBlock, newMembers)
-        .with(\.modifiers, modifiers.remove(name: accessKeyword.name.text))
+        .with(\.modifiers, node.modifiers.remove(name: accessKeyword.name.text))
         .with(\.extensionKeyword, newKeyword)
       return DeclSyntax(result)
 
@@ -62,11 +60,9 @@ public final class NoAccessLevelOnExtensionDeclaration: SyntaxFormatRule {
       diagnose(
         .removeRedundantAccessKeyword(name: node.extendedType.description),
         on: accessKeyword)
-      let newKeyword = replaceTrivia(
-        on: node.extensionKeyword,
-        token: node.extensionKeyword,
-        leadingTrivia: accessKeyword.leadingTrivia)
-      let result = node.with(\.modifiers, modifiers.remove(name: accessKeyword.name.text))
+      var newKeyword = node.extensionKeyword
+      newKeyword.leadingTrivia = accessKeyword.leadingTrivia
+      let result = node.with(\.modifiers, node.modifiers.remove(name: accessKeyword.name.text))
         .with(\.extensionKeyword, newKeyword)
       return DeclSyntax(result)
 
@@ -78,14 +74,13 @@ public final class NoAccessLevelOnExtensionDeclaration: SyntaxFormatRule {
 
   // Adds given keyword to all members in declaration block
   private func addMemberAccessKeywords(
-    memDeclBlock: MemberDeclBlockSyntax,
+    memDeclBlock: MemberBlockSyntax,
     keyword: DeclModifierSyntax
-  ) -> MemberDeclListSyntax {
-    var newMembers: [MemberDeclListItemSyntax] = []
-    let formattedKeyword = replaceTrivia(
-      on: keyword,
-      token: keyword.name,
-      leadingTrivia: [])
+  ) -> MemberBlockItemListSyntax {
+    var newMembers: [MemberBlockItemSyntax] = []
+
+    var formattedKeyword = keyword
+    formattedKeyword.leadingTrivia = []
 
     for memberItem in memDeclBlock.members {
       let member = memberItem.decl
@@ -96,16 +91,16 @@ public final class NoAccessLevelOnExtensionDeclaration: SyntaxFormatRule {
       else { continue }
       newMembers.append(memberItem.with(\.decl, newDecl))
     }
-    return MemberDeclListSyntax(newMembers)
+    return MemberBlockItemListSyntax(newMembers)
   }
 }
 
 extension Finding.Message {
   public static func removeRedundantAccessKeyword(name: String) -> Finding.Message {
-    "remove redundant 'internal' access keyword from \(name)"
+    "remove redundant 'internal' access keyword from '\(name)'"
   }
 
   public static func moveAccessKeyword(keyword: String) -> Finding.Message {
-    "specify \(keyword) access level for each member inside the extension"
+    "move the '\(keyword)' access keyword to precede each member inside the extension"
   }
 }

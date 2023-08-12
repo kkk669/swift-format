@@ -40,7 +40,7 @@ public final class UseLetInEveryBoundCaseVariable: SyntaxLintRule {
     while true {
       if let optionalExpr = expression.as(OptionalChainingExprSyntax.self) {
         expression = optionalExpr.expression
-      } else if let forcedExpr = expression.as(ForcedValueExprSyntax.self) {
+      } else if let forcedExpr = expression.as(ForceUnwrapExprSyntax.self) {
         expression = forcedExpr.expression
       } else {
         break
@@ -67,5 +67,5 @@ public final class UseLetInEveryBoundCaseVariable: SyntaxLintRule {
 
 extension Finding.Message {
   public static let useLetInBoundCaseVariables: Finding.Message =
-    "move 'let' keyword to precede each variable bound in the `case` pattern"
+    "move this 'let' keyword inside the 'case' pattern, before each of the bound variables"
 }

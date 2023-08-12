@@ -126,7 +126,7 @@ public final class NoCasesWithOnlyFallthrough: SyntaxFormatRule {
 
     // When there are any additional or non-fallthrough statements, it isn't only a fallthrough.
     guard let onlyStatement = switchCase.statements.firstAndOnly,
-      onlyStatement.item.is(FallthroughStmtSyntax.self)
+      onlyStatement.item.is(FallThroughStmtSyntax.self)
     else {
       return false
     }
@@ -168,7 +168,7 @@ public final class NoCasesWithOnlyFallthrough: SyntaxFormatRule {
       return cases.first!
     }
 
-    var newCaseItems: [CaseItemSyntax] = []
+    var newCaseItems: [SwitchCaseItemSyntax] = []
     let labels = cases.lazy.compactMap({ $0.label.as(SwitchCaseLabelSyntax.self) })
     for label in labels.dropLast() {
       // We can blindly append all but the last case item because they must already have a trailing
@@ -183,12 +183,12 @@ public final class NoCasesWithOnlyFallthrough: SyntaxFormatRule {
       // Diagnose the cases being collapsed. We do this for all but the last one in the array; the
       // last one isn't diagnosed because it will contain the body that applies to all the previous
       // cases.
-      diagnose(.collapseCase(name: label.caseItems.with(\.leadingTrivia, []).with(\.trailingTrivia, []).description), on: label)
+      diagnose(.collapseCase, on: label)
     }
     newCaseItems.append(contentsOf: labels.last!.caseItems)
 
     let newCase = cases.last!.with(\.label, .case(
-      labels.last!.with(\.caseItems, CaseItemListSyntax(newCaseItems))))
+      labels.last!.with(\.caseItems, SwitchCaseItemListSyntax(newCaseItems))))
 
     // Only the first violation case can have displaced trivia, because any non-whitespace
     // trivia in the other violation cases would've prevented collapsing.
@@ -219,7 +219,7 @@ extension TriviaPiece {
 }
 
 extension Finding.Message {
-  public static func collapseCase(name: String) -> Finding.Message {
-    "combine fallthrough-only case \(name) with a following case"
+  public static var collapseCase: Finding.Message {
+    "combine this fallthrough-only 'case' and the following 'case' into a single 'case'"
   }
 }

@@ -29,6 +29,7 @@ let package = Package(
       name: "SwiftFormat",
       targets: ["SwiftFormat", "SwiftFormatConfiguration"]
     ),
+    // TODO: Remove this product after the 509 release.
     .library(
       name: "SwiftFormatConfiguration",
       targets: ["SwiftFormatConfiguration"]
@@ -49,7 +50,6 @@ let package = Package(
     .target(
       name: "SwiftFormat",
       dependencies: [
-        "SwiftFormatConfiguration",
         .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
@@ -58,15 +58,18 @@ let package = Package(
         .product(name: "SwiftParserDiagnostics", package: "swift-syntax"),
       ]
     ),
+    // TODO: Remove this target after the 509 release.
     .target(
       name: "SwiftFormatConfiguration",
-      dependencies: [.target(name: "WASIHelpers", condition: .when(platforms: [.wasi]))]
+      dependencies: [
+        "SwiftFormat",
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
+      ]
     ),
     .target(
       name: "_SwiftFormatTestSupport",
       dependencies: [
         "SwiftFormat",
-        "SwiftFormatConfiguration",
         .product(name: "SwiftOperators", package: "swift-syntax"),
       ]
     ),
@@ -111,7 +114,6 @@ let package = Package(
       name: "swift-format",
       dependencies: [
         "SwiftFormat",
-        "SwiftFormatConfiguration",
         .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
@@ -119,10 +121,6 @@ let package = Package(
       ]
     ),
 
-    .testTarget(
-      name: "SwiftFormatConfigurationTests",
-      dependencies: ["SwiftFormatConfiguration"]
-    ),
     .testTarget(
       name: "SwiftFormatPerformanceTests",
       dependencies: [
@@ -136,7 +134,6 @@ let package = Package(
       name: "SwiftFormatTests",
       dependencies: [
         "SwiftFormat",
-        "SwiftFormatConfiguration",
         "_SwiftFormatTestSupport",
         .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftOperators", package: "swift-syntax"),

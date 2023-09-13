@@ -45,6 +45,7 @@ public struct Configuration: Codable, Equatable {
     case rules
     case spacesAroundRangeFormationOperators
     case noAssignmentInExpressions
+    case multiElementCollectionTrailingCommas
   }
 
   /// A dictionary containing the default enabled/disabled states of rules, keyed by the rules'
@@ -165,6 +166,29 @@ public struct Configuration: Codable, Equatable {
   /// Contains exceptions for the `NoAssignmentInExpressions` rule.
   public var noAssignmentInExpressions: NoAssignmentInExpressionsConfiguration
 
+  /// Determines if multi-element collection literals should have trailing commas.
+  ///
+  /// When `true` (default), the correct form is:
+  /// ```swift
+  /// let MyCollection = [1, 2,]
+  /// ...
+  /// let MyCollection = [
+  ///   "a": 1,
+  ///   "b": 2,
+  /// ]
+  /// ```
+  ///
+  /// When `false`, the correct form is:
+  /// ```swift
+  /// let MyCollection = [1, 2]
+  /// ...
+  /// let MyCollection = [
+  ///   "a": 1,
+  ///   "b": 2
+  /// ]
+  /// ```
+  public var multiElementCollectionTrailingCommas: Bool
+
   /// Constructs a Configuration by loading it from a configuration file.
   public init(contentsOf url: URL) throws {
     let data = try Data(contentsOf: url)
@@ -242,6 +266,10 @@ public struct Configuration: Codable, Equatable {
       try container.decodeIfPresent(
         NoAssignmentInExpressionsConfiguration.self, forKey: .noAssignmentInExpressions)
       ?? defaults.noAssignmentInExpressions
+    self.multiElementCollectionTrailingCommas =
+      try container.decodeIfPresent(
+        Bool.self, forKey: .multiElementCollectionTrailingCommas)
+    ?? defaults.multiElementCollectionTrailingCommas
 
     // If the `rules` key is not present at all, default it to the built-in set
     // so that the behavior is the same as if the configuration had been
@@ -274,6 +302,7 @@ public struct Configuration: Codable, Equatable {
     try container.encode(fileScopedDeclarationPrivacy, forKey: .fileScopedDeclarationPrivacy)
     try container.encode(indentSwitchCaseLabels, forKey: .indentSwitchCaseLabels)
     try container.encode(noAssignmentInExpressions, forKey: .noAssignmentInExpressions)
+    try container.encode(multiElementCollectionTrailingCommas, forKey: .multiElementCollectionTrailingCommas)
     try container.encode(rules, forKey: .rules)
   }
 

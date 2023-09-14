@@ -14,6 +14,9 @@ import Foundation
 import SwiftDiagnostics
 import SwiftOperators
 import SwiftSyntax
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Diagnoses and reports problems in Swift source code or syntax trees according to the Swift style
 /// guidelines.

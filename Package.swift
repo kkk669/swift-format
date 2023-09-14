@@ -50,6 +50,7 @@ let package = Package(
     .target(
       name: "SwiftFormat",
       dependencies: [
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftOperators", package: "swift-syntax"),
@@ -61,7 +62,8 @@ let package = Package(
     .target(
       name: "SwiftFormatConfiguration",
       dependencies: [
-        "SwiftFormat"
+        "SwiftFormat",
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
       ]
     ),
     .target(
@@ -70,6 +72,9 @@ let package = Package(
         "SwiftFormat",
         .product(name: "SwiftOperators", package: "swift-syntax"),
       ]
+    ),
+    .target(
+      name: "WASIHelpers"
     ),
     .plugin(
       name: "Format Source Code",
@@ -109,6 +114,7 @@ let package = Package(
       name: "swift-format",
       dependencies: [
         "SwiftFormat",
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),

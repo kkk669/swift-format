@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 import ArgumentParser
-import _SwiftFormatInstructionCounter
 
 struct PerformanceMeasurementsOptions: ParsableArguments {
   @Flag(help: "Measure number of instructions executed by swift-format")
@@ -23,11 +22,7 @@ struct PerformanceMeasurementsOptions: ParsableArguments {
     if !measureInstructions {
       return try body()
     } else {
-      let startInstructions = getInstructionsExecuted()
-      defer {
-        print("Instructions executed: \(getInstructionsExecuted() - startInstructions)")
-      }
-      return try body()
+      fatalError("not implemented")
     }
   }
 }

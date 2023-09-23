@@ -1,31 +1,29 @@
 name: Swift
-
 on:
   push:
-    branches: [ "wasm32-wasi" ]
+    branches: ["wasm32-wasi"]
   pull_request:
-    branches: [ "wasm32-wasi" ]
-
+    branches: ["wasm32-wasi"]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: swiftwasm/setup-swiftwasm@v1
-      with:
-        swift-version: "wasm-DEVELOPMENT-SNAPSHOT-2023-08-07-a"
-    - name: Install tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install wabt binaryen
-    - run: swift --version
-    - name: Build
-      run: |
-        swift build --product swift-format --triple wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288
-        wasm-strip .build/release/swift-format.wasm
-        wasm-opt -Os .build/release/swift-format.wasm -o swift-format.wasm
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: swift-format.wasm
-        path: swift-format.wasm
+      - uses: actions/checkout@v3
+      - uses: swiftwasm/setup-swiftwasm@v1
+        with:
+          swift-version: "wasm-DEVELOPMENT-SNAPSHOT-2023-08-07-a"
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install wabt binaryen
+      - run: swift --version
+      - name: Build
+        run: |
+          swift build --product swift-format --triple wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288
+          wasm-strip .build/release/swift-format.wasm
+          wasm-opt -Os .build/release/swift-format.wasm -o swift-format.wasm
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: swift-format.wasm
+          path: swift-format.wasm

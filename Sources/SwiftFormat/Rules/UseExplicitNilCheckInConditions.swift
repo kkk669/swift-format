@@ -41,10 +41,21 @@ public final class UseExplicitNilCheckInConditions: SyntaxFormatRule {
       // trivia of the original node, since that token is being removed entirely.
       var value = initializerClause.value
       let trailingTrivia = value.trailingTrivia
-      value.trailingTrivia = []
+      value.trailingTrivia = [.spaces(1)]
 
-      return ConditionElementSyntax(
-        condition: .expression("\(node.leadingTrivia)\(value) != nil\(trailingTrivia)"))
+      var operatorExpr = BinaryOperatorExprSyntax(text: "!=")
+      operatorExpr.trailingTrivia = [.spaces(1)]
+
+      var inequalExpr = InfixOperatorExprSyntax(
+        leftOperand: value,
+        operator: operatorExpr,
+        rightOperand: NilLiteralExprSyntax())
+      inequalExpr.leadingTrivia = node.leadingTrivia
+      inequalExpr.trailingTrivia = trailingTrivia
+
+      var result = node
+      result.condition = .expression(ExprSyntax(inequalExpr))
+      return result
     default:
       return node
     }

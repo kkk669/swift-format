@@ -76,6 +76,7 @@ public struct FileIterator: Sequence, IteratorProtocol {
 
         switch fileType {
         case .typeSymbolicLink:
+          #if !os(WASI)
           guard
             followSymlinks,
             let destination = try? FileManager.default.destinationOfSymbolicLink(atPath: next.path)
@@ -84,6 +85,9 @@ public struct FileIterator: Sequence, IteratorProtocol {
           }
           next = URL(fileURLWithPath: destination)
           fallthrough
+          #else
+          fatalError("not implemented")
+          #endif
 
         case .typeDirectory:
           dirIterator = FileManager.default.enumerator(
@@ -124,6 +128,7 @@ public struct FileIterator: Sequence, IteratorProtocol {
       var path = item.path
       switch fileType {
       case .typeSymbolicLink where followSymlinks:
+        #if !os(WASI)
         guard
           let destination = try? FileManager.default.destinationOfSymbolicLink(atPath: path)
         else {
@@ -131,6 +136,9 @@ public struct FileIterator: Sequence, IteratorProtocol {
         }
         path = destination
         fallthrough
+        #else
+        fatalError("not implemented")
+        #endif
 
       case .typeRegular:
         // We attempt to relativize the URLs based on the current working directory, not the

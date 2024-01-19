@@ -19,7 +19,7 @@ jobs:
       - run: swift --version
       - name: Build
         run: |
-          swift build --product swift-format --triple wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288
+          swift build --product swift-format --triple wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288 --static-swift-stdlib
           wasm-strip .build/release/swift-format.wasm
           wasm-opt -Os .build/release/swift-format.wasm -o swift-format.wasm
       - name: Upload artifacts

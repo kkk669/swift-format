@@ -110,26 +110,7 @@ def get_swiftpm_options(
         swift_exec, cross_compile_config=cross_compile_config
     )
     build_os = build_target.split("-")[2]
-    if build_os.startswith("macosx"):
-        args += [
-            "-Xlinker",
-            "-rpath",
-            "-Xlinker",
-            "/usr/lib/swift",
-        ]
-        args += [
-            "-Xlinker",
-            "-rpath",
-            "-Xlinker",
-            "@executable_path/../lib/swift/macosx",
-        ]
-        args += [
-            "-Xlinker",
-            "-rpath",
-            "-Xlinker",
-            "@executable_path/../lib/swift-5.5/macosx",
-        ]
-    else:
+    if not build_os.startswith("macosx"):
         # Library rpath for swift, dispatch, Foundation, etc. when installing
         args += [
             "-Xlinker",
@@ -137,6 +118,7 @@ def get_swiftpm_options(
             "-Xlinker",
             "$ORIGIN/../lib/swift/" + build_os,
         ]
+        args += ['--disable-local-rpath']
 
     if cross_compile_host:
         if build_os.startswith("macosx") and cross_compile_host.startswith("macosx-"):
@@ -151,7 +133,7 @@ def get_swiftpm_environment_variables(action: str):
     env = dict(os.environ)
     env["SWIFTCI_USE_LOCAL_DEPS"] = "1"
     if action == "install":
-        env["SOURCEKIT_LSP_CI_INSTALL"] = "1"
+        env["SWIFTFORMAT_CI_INSTALL"] = "1"
     return env
 
 
@@ -294,9 +276,10 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="build-script-helper.py")
-    subparsers = parser.add_subparsers(
-        title="subcommands", dest="action", required=True, metavar="action"
-    )
+    if sys.version_info >= (3, 7, 0):
+        subparsers = parser.add_subparsers(title="subcommands", dest="action", required=True, metavar="action")
+    else:
+        subparsers = parser.add_subparsers(title="subcommands", dest="action", metavar="action")
 
     build_parser = subparsers.add_parser("build", help="build the package")
     add_common_args(build_parser)

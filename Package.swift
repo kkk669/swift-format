@@ -47,7 +47,7 @@ let package = Package(
     .target(
       name: "SwiftFormat",
       dependencies: [
-        .product(name: "Markdown", package: "swift-markdown", condition: .when(platforms: [.macOS, .iOS, .linux, .windows])),
+        .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
         .product(name: "SwiftOperators", package: "swift-syntax"),

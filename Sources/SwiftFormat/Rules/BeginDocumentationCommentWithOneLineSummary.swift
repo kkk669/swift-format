@@ -90,7 +90,6 @@ public final class BeginDocumentationCommentWithOneLineSummary: SyntaxLintRule {
 
   /// Diagnose documentation comments that don't start with one sentence summary.
   private func diagnoseDocComments(in decl: DeclSyntax) {
-#if !os(WASI)
     guard
       let docComment = DocumentationComment(extractedFrom: decl),
       let briefSummary = docComment.briefSummary
@@ -108,7 +107,6 @@ public final class BeginDocumentationCommentWithOneLineSummary: SyntaxLintRule {
         diagnose(.terminateSentenceWithPeriod(trailingText), on: decl)
       }
     }
-#endif
   }
 
   /// Returns all the sentences in the given text.

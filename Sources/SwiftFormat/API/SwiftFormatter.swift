@@ -14,9 +14,6 @@ import Foundation
 import SwiftDiagnostics
 import SwiftOperators
 import SwiftSyntax
-#if os(WASI)
-import WASIHelpers
-#endif
 
 /// Formats Swift source code or syntax trees according to the Swift style guidelines.
 public final class SwiftFormatter {

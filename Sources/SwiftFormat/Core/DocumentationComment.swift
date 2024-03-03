@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WASI)
+
 import Markdown
 import SwiftSyntax
 
@@ -343,3 +345,5 @@ private struct SimpleFieldMarkupRewriter: MarkupRewriter {
     return Text(String(nameAndRemainder[1]))
   }
 }
+
+#endif

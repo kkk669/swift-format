@@ -10,6 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WASI)
+
 import Foundation
 import Markdown
 import SwiftSyntax
@@ -196,3 +198,10 @@ extension Finding.Message {
     "add a 'Throws:' section to document the errors thrown by '\(funcName)'"
   }
 }
+
+#else
+
+@_spi(Rules)
+public final class ValidateDocumentationComments {}
+
+#endif

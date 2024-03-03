@@ -239,7 +239,9 @@ class LintPipeline: SyntaxVisitor {
     visitIfEnabled(NoLeadingUnderscores.visit, for: node)
     visitIfEnabled(OmitExplicitReturns.visit, for: node)
     visitIfEnabled(UseTripleSlashForDocumentationComments.visit, for: node)
+#if !os(WASI)
     visitIfEnabled(ValidateDocumentationComments.visit, for: node)
+#endif
     return .visitChildren
   }
   override func visitPost(_ node: FunctionDeclSyntax) {
@@ -249,7 +251,9 @@ class LintPipeline: SyntaxVisitor {
     onVisitPost(rule: NoLeadingUnderscores.self, for: node)
     onVisitPost(rule: OmitExplicitReturns.self, for: node)
     onVisitPost(rule: UseTripleSlashForDocumentationComments.self, for: node)
+#if !os(WASI)
     onVisitPost(rule: ValidateDocumentationComments.self, for: node)
+#endif
   }
 
   override func visit(_ node: FunctionParameterSyntax) -> SyntaxVisitorContinueKind {
@@ -340,14 +344,18 @@ class LintPipeline: SyntaxVisitor {
     visitIfEnabled(AllPublicDeclarationsHaveDocumentation.visit, for: node)
     visitIfEnabled(BeginDocumentationCommentWithOneLineSummary.visit, for: node)
     visitIfEnabled(UseTripleSlashForDocumentationComments.visit, for: node)
+#if !os(WASI)
     visitIfEnabled(ValidateDocumentationComments.visit, for: node)
+#endif
     return .visitChildren
   }
   override func visitPost(_ node: InitializerDeclSyntax) {
     onVisitPost(rule: AllPublicDeclarationsHaveDocumentation.self, for: node)
     onVisitPost(rule: BeginDocumentationCommentWithOneLineSummary.self, for: node)
     onVisitPost(rule: UseTripleSlashForDocumentationComments.self, for: node)
+#if !os(WASI)
     onVisitPost(rule: ValidateDocumentationComments.self, for: node)
+#endif
   }
 
   override func visit(_ node: IntegerLiteralExprSyntax) -> SyntaxVisitorContinueKind {

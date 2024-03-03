@@ -41,6 +41,10 @@ let package = Package(
   dependencies: dependencies,
   targets: [
     .target(
+      name: "_SwiftFormatInstructionCounter"
+    ),
+
+    .target(
       name: "SwiftFormat",
       dependencies: [
         .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
@@ -99,6 +103,7 @@ let package = Package(
     .executableTarget(
       name: "swift-format",
       dependencies: [
+        "_SwiftFormatInstructionCounter",
         "SwiftFormat",
         .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),

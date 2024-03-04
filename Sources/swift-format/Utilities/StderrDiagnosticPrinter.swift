@@ -84,7 +84,7 @@ final class StderrDiagnosticPrinter {
     }
 
     if let category = diagnostic.category {
-    stderr.write("\(ansiSGR(.boldYellow))[\(category)] ")
+      stderr.write("\(ansiSGR(.boldYellow))[\(category)] ")
     }
     stderr.write("\(ansiSGR(.boldWhite))\(diagnostic.message)\(ansiSGR(.reset))\n")
   }

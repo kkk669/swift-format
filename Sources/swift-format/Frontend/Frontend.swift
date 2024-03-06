@@ -130,10 +130,14 @@ class Frontend {
       "processURLs(_:) should only be called when 'urls' is non-empty.")
 
     if parallel {
+#if !os(WASI)
       let filesToProcess = FileIterator(urls: urls).compactMap(openAndPrepareFile)
       DispatchQueue.concurrentPerform(iterations: filesToProcess.count) { index in
         processFile(filesToProcess[index])
       }
+#else
+      fatalError("not implemented")
+#endif
     } else {
       FileIterator(urls: urls).lazy.compactMap(openAndPrepareFile).forEach(processFile)
     }

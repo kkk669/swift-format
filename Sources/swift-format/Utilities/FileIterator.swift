@@ -11,6 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
+#if os(WASI)
+import WASIHelpers
+#endif
 
 /// Iterator for looping over lists of files and directories. Directories are automatically
 /// traversed recursively, and we check for files with a ".swift" extension.
@@ -92,7 +95,7 @@ struct FileIterator: Sequence, IteratorProtocol {
             // supported yet on Linux, so we need to relativize the URL ourselves.
             let relativePath =
               item.path.hasPrefix(workingDirectory.path)
-              ? String(item.path.dropFirst(workingDirectory.path.count + 1))
+              ? String(item.path.dropFirst(workingDirectory.path.count))
               : item.path
             output =
               URL(fileURLWithPath: relativePath, isDirectory: false, relativeTo: workingDirectory)

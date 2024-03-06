@@ -50,6 +50,7 @@ let package = Package(
     .target(
       name: "SwiftFormat",
       dependencies: [
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "Markdown", package: "swift-markdown"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftOperators", package: "swift-syntax"),
@@ -71,6 +72,7 @@ let package = Package(
         .product(name: "SwiftOperators", package: "swift-syntax"),
       ]
     ),
+    .target(name: "WASIHelpers"),
     .plugin(
       name: "Format Source Code",
       capability: .command(
@@ -149,8 +151,8 @@ if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
       from: "1.2.2"
     ),
     .package(
-      url: "https://github.com/apple/swift-markdown.git",
-      from: "0.2.0"
+      url: "https://github.com/kkk669/swift-markdown.git",
+      branch: "wasm32-wasi"
     ),
     .package(
       url: "https://github.com/apple/swift-syntax.git",

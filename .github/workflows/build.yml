@@ -1,0 +1,29 @@
+name: Swift
+on:
+  push:
+    branches: ["wasm32-wasi-release/5.10"]
+  pull_request:
+    branches: ["wasm32-wasi-release/5.10"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: swiftlang/swift:nightly-5.10-jammy@sha256:620a295e876c948ad0bae8cc54900dcdf36792df0629971e20ca92c0cbe8a26f
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: apt-get update && apt-get install --no-install-recommends -y wabt binaryen curl
+      - run: swift --version
+      - name: Install Swift SDK
+        run: |
+          curl -L -o swift-wasm.artifactbundle.zip https://github.com/swiftwasm/swift/releases/download/swift-wasm-5.10-SNAPSHOT-2024-03-14-a/swift-wasm-5.10-SNAPSHOT-2024-03-14-a-ubuntu22.04_x86_64.artifactbundle.zip
+          swift experimental-sdk install swift-wasm.artifactbundle.zip
+      - name: Build
+        run: |
+          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288
+          wasm-strip .build/release/swift-format.wasm
+          wasm-opt -Oz -all .build/release/swift-format.wasm -o swift-format.wasm
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-format.wasm
+          path: swift-format.wasm

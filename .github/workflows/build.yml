@@ -7,13 +7,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: swiftlang/swift:nightly-main-jammy@sha256:20683d5bf5331c8a77a77c859e9bde0bea312b1ffc34c817fe76cd1aea9ec3ff
+    container: swiftlang/swift:nightly-main-jammy@sha256:c7a1b48a3fa4674a8082c99f5f2fdf5580b850870ad02913ca0f21c104cbdd8f
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
         run: apt-get update && apt-get install --no-install-recommends -y wabt binaryen
       - run: swift --version
-      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-03-02-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-03-02-a-ubuntu22.04_x86_64.artifactbundle.zip
+      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-03-06-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-03-06-a-ubuntu22.04_x86_64.artifactbundle.zip
       - name: Build
         run: |
           swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288

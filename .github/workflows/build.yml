@@ -16,7 +16,7 @@ jobs:
       - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-03-06-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-03-06-a-ubuntu22.04_x86_64.artifactbundle.zip
       - name: Build
         run: |
-          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=131072
+          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288
           wasm-strip .build/release/swift-format.wasm
           wasm-opt -Oz -all .build/release/swift-format.wasm -o swift-format.wasm
       - name: Upload artifacts

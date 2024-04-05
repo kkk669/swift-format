@@ -1,4 +1,4 @@
-# kkk669/swift-format
+# kkebo/swift-format
 
 The WebAssembly (WASI) version of `swift-format`.
 
@@ -7,9 +7,9 @@ The WebAssembly (WASI) version of `swift-format`.
 You can download `swift-format.wasm` from the following pages.
 
 - stable
-  - [Releases](https://github.com/kkk669/swift-format/releases)
+  - [Releases](https://github.com/kkebo/swift-format/releases)
 - main
-  - [CI job artifacts](https://github.com/kkk669/swift-format/actions?query=branch%3Awasm32-wasi++)
+  - [CI job artifacts](https://github.com/kkebo/swift-format/actions?query=branch%3Awasm32-wasi++)
 
 ## Supported runtimes
 

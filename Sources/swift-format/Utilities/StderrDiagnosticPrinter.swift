@@ -10,7 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(WASI)
 import Dispatch
+#endif
 import Foundation
 
 /// Manages printing of diagnostics to standard error.
@@ -38,8 +40,10 @@ final class StderrDiagnosticPrinter {
     case reset = "0"
   }
 
+#if !os(WASI)
   /// The queue used to synchronize printing uninterrupted diagnostic messages.
   private let printQueue = DispatchQueue(label: "com.apple.swift-format.StderrDiagnosticPrinter")
+#endif
 
   /// Indicates whether colors should be used when printing diagnostics.
   private let useColors: Bool
@@ -58,22 +62,31 @@ final class StderrDiagnosticPrinter {
 
   /// Prints a diagnostic to standard error.
   func printDiagnostic(_ diagnostic: Diagnostic) {
+#if !os(WASI)
     printQueue.sync {
-      let stderr = FileHandleTextOutputStream(FileHandle.standardError)
-
-      stderr.write("\(ansiSGR(.boldWhite))\(description(of: diagnostic.location)): ")
-
-      switch diagnostic.severity {
-      case .error: stderr.write("\(ansiSGR(.boldRed))error: ")
-      case .warning: stderr.write("\(ansiSGR(.boldMagenta))warning: ")
-      case .note: stderr.write("\(ansiSGR(.boldGray))note: ")
-      }
-
-      if let category = diagnostic.category {
-        stderr.write("\(ansiSGR(.boldYellow))[\(category)] ")
-      }
-      stderr.write("\(ansiSGR(.boldWhite))\(diagnostic.message)\(ansiSGR(.reset))\n")
+      _printDiagnostic(diagnostic)
     }
+#else
+    _printDiagnostic(diagnostic)
+#endif
+  }
+
+  /// Prints a diagnostic to standard error.
+  private func _printDiagnostic(_ diagnostic: Diagnostic) {
+    let stderr = FileHandleTextOutputStream(FileHandle.standardError)
+
+    stderr.write("\(ansiSGR(.boldWhite))\(description(of: diagnostic.location)): ")
+
+    switch diagnostic.severity {
+    case .error: stderr.write("\(ansiSGR(.boldRed))error: ")
+    case .warning: stderr.write("\(ansiSGR(.boldMagenta))warning: ")
+    case .note: stderr.write("\(ansiSGR(.boldGray))note: ")
+    }
+
+    if let category = diagnostic.category {
+      stderr.write("\(ansiSGR(.boldYellow))[\(category)] ")
+    }
+    stderr.write("\(ansiSGR(.boldWhite))\(diagnostic.message)\(ansiSGR(.reset))\n")
   }
 
   /// Returns a string representation of the given diagnostic location, or a fallback string if the

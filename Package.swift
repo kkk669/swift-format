@@ -62,6 +62,9 @@ let package = Package(
         .product(name: "SwiftOperators", package: "swift-syntax"),
       ]
     ),
+    .target(
+      name: "WASIHelpers"
+    ),
     .plugin(
       name: "Format Source Code",
       capability: .command(
@@ -101,6 +104,7 @@ let package = Package(
       dependencies: [
         "_SwiftFormatInstructionCounter",
         "SwiftFormat",
+        .target(name: "WASIHelpers", condition: .when(platforms: [.wasi])),
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftParser", package: "swift-syntax"),
@@ -128,10 +132,6 @@ let package = Package(
         .product(name: "SwiftSyntax", package: "swift-syntax"),
         .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
       ]
-    ),
-    .testTarget(
-      name: "swift-formatTests",
-      dependencies: ["swift-format"]
     ),
   ]
 )
@@ -162,7 +162,7 @@ var dependencies: [Package.Dependency] {
   } else {
     return [
       .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.2.2"),
-      .package(url: "https://github.com/apple/swift-markdown.git", from: "0.2.0"),
+      .package(url: "https://github.com/kkebo/swift-markdown.git", branch: "wasm32-wasi"),
       .package(url: "https://github.com/apple/swift-syntax.git", branch: "release/6.0"),
     ]
   }

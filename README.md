@@ -1,3 +1,29 @@
+# kkebo/swift-format
+
+The WebAssembly (WASI) version of `swift-format`.
+
+## Download
+
+You can download `swift-format.wasm` from the following pages.
+
+- stable
+  - [Releases](https://github.com/kkebo/swift-format/releases)
+- main
+  - [CI job artifacts](https://github.com/kkebo/swift-format/actions?query=branch%3Awasm32-wasi++)
+
+## Supported runtimes
+
+The checked items are currently supported. The others are planned to be supported, but currently are not.
+
+- [x] [a-Shell](https://github.com/holzschu/a-shell?tab=readme-ov-file) (iOS, iPadOS)
+- [x] [Wasmtime](https://wasmtime.dev)
+- [ ] [Wasmer](https://wasmer.io)
+- [ ] [WasmKit](https://github.com/swiftwasm/WasmKit)
+
+## Restrictions
+
+- `-p` and `--parallel`  options are not implemented
+
 # swift-format
 
 `swift-format` provides the formatting technology for

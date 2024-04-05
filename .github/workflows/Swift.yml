@@ -1,0 +1,41 @@
+name: Swift
+on:
+  push:
+    branches: ["wasm32-wasi-release/6.0"]
+  pull_request:
+    branches: ["wasm32-wasi-release/6.0"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: swiftlang/swift:nightly-6.0-jammy@sha256:44ba69ddef1f35179ea5b4a5a9177e955f7b0c10b661d4fa026cd62739f4fb9b
+    env:
+      STACK_SIZE: 524288
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: apt-get update && apt-get install --no-install-recommends -y wabt binaryen
+      - run: swift --version
+      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-6.0-SNAPSHOT-2024-05-01-a/swift-wasm-6.0-SNAPSHOT-2024-05-01-a-ubuntu22.04_x86_64.artifactbundle.zip
+      - name: Build
+        run: |
+          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+          wasm-strip .build/release/swift-format.wasm
+          wasm-opt -Oz -all .build/release/swift-format.wasm -o swift-format.wasm
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-format.wasm
+          path: swift-format.wasm
+  test:
+    runs-on: ubuntu-latest
+    container: swiftlang/swift:nightly-6.0-jammy@sha256:44ba69ddef1f35179ea5b4a5a9177e955f7b0c10b661d4fa026cd62739f4fb9b
+    env:
+      STACK_SIZE: 4194304
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bytecodealliance/actions/wasmtime/setup@v1
+      - run: swift --version
+      - run: wasmtime -V
+      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-6.0-SNAPSHOT-2024-05-01-a/swift-wasm-6.0-SNAPSHOT-2024-05-01-a-ubuntu22.04_x86_64.artifactbundle.zip
+      - run: swift build -c release --build-tests --experimental-swift-sdk wasm32-unknown-wasi -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+      - run: wasmtime --dir / --wasm max-wasm-stack=$STACK_SIZE .build/release/swift-formatPackageTests.wasm

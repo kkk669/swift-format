@@ -8,6 +8,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: swiftlang/swift:nightly-main-jammy@sha256:53d24dfba03c50d04f646c91629d4c63103f4772f5e3dfd24a12fe0fdba775b7
+    env:
+      STACK_SIZE: 524288
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
@@ -16,7 +18,7 @@ jobs:
       - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-05-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-05-a-ubuntu22.04_x86_64.artifactbundle.zip
       - name: Build
         run: |
-          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=524288
+          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=$STACK_SIZE
           wasm-strip .build/release/swift-format.wasm
           wasm-opt -Oz -all .build/release/swift-format.wasm -o swift-format.wasm
       - name: Upload artifacts
@@ -24,3 +26,16 @@ jobs:
         with:
           name: swift-format.wasm
           path: swift-format.wasm
+  test:
+    runs-on: ubuntu-latest
+    container: swiftlang/swift:nightly-main-jammy@sha256:53d24dfba03c50d04f646c91629d4c63103f4772f5e3dfd24a12fe0fdba775b7
+    env:
+      STACK_SIZE: 4194304
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bytecodealliance/actions/wasmtime/setup@v1
+      - run: swift --version
+      - run: wasmtime -V
+      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-05-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-05-a-ubuntu22.04_x86_64.artifactbundle.zip
+      - run: swift build -c release --build-tests --experimental-swift-sdk wasm32-unknown-wasi -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+      - run: wasmtime --dir / --wasm max-wasm-stack=$STACK_SIZE .build/release/swift-formatPackageTests.wasm

@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: swiftlang/swift:nightly-main-jammy@sha256:182c1be5260a130ac6c215e8efb8b2273b0da6afbb9ecf7f031f4ea627cfa5e9
+    container: swiftlang/swift:nightly-main-jammy@sha256:d7f7dbba5b26e8f928f041ccba963bf66f2be3ad68ec06da7d83091e01ae6666
     env:
       STACK_SIZE: 524288
     steps:
@@ -15,10 +15,10 @@ jobs:
       - name: Install tools
         run: apt-get update && apt-get install --no-install-recommends -y wabt binaryen
       - run: swift --version
-      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-27-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-27-a-wasm32-unknown-wasi.artifactbundle.zip
+      - run: swift sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-28-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-28-a-wasm32-unknown-wasi.artifactbundle.zip
       - name: Build
         run: |
-          swift build --product swift-format --experimental-swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+          swift build --product swift-format --swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=$STACK_SIZE
           wasm-strip .build/release/swift-format.wasm
           wasm-opt -Oz -all .build/release/swift-format.wasm -o swift-format.wasm
       - name: Upload artifacts
@@ -28,7 +28,7 @@ jobs:
           path: swift-format.wasm
   test:
     runs-on: ubuntu-latest
-    container: swiftlang/swift:nightly-main-jammy@sha256:182c1be5260a130ac6c215e8efb8b2273b0da6afbb9ecf7f031f4ea627cfa5e9
+    container: swiftlang/swift:nightly-main-jammy@sha256:d7f7dbba5b26e8f928f041ccba963bf66f2be3ad68ec06da7d83091e01ae6666
     env:
       STACK_SIZE: 4194304
     steps:
@@ -36,6 +36,6 @@ jobs:
       - uses: bytecodealliance/actions/wasmtime/setup@v1
       - run: swift --version
       - run: wasmtime -V
-      - run: swift experimental-sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-27-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-27-a-wasm32-unknown-wasi.artifactbundle.zip
-      - run: swift build -c release --build-tests --experimental-swift-sdk wasm32-unknown-wasi -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+      - run: swift sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-28-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-04-28-a-wasm32-unknown-wasi.artifactbundle.zip
+      - run: swift build -c release --build-tests --swift-sdk wasm32-unknown-wasi -Xlinker -z -Xlinker stack-size=$STACK_SIZE
       - run: wasmtime --dir / --wasm max-wasm-stack=$STACK_SIZE .build/release/swift-formatPackageTests.wasm

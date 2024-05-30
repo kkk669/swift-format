@@ -14,9 +14,6 @@ import Foundation
 import SwiftDiagnostics
 import SwiftFormat
 import SwiftSyntax
-#if os(WASI)
-import WASIHelpers
-#endif
 
 /// The frontend for formatting operations.
 class FormatFrontend: Frontend {

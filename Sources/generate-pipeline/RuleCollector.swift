@@ -50,6 +50,7 @@ final class RuleCollector {
   ///
   /// - Parameter url: The file system URL that should be scanned for rules.
   func collect(from url: URL) throws {
+    #if !os(WASI)
     // For each file in the Rules directory, find types that either conform to SyntaxLintRule or
     // inherit from SyntaxFormatRule.
     let fm = FileManager.default
@@ -83,6 +84,9 @@ final class RuleCollector {
         }
       }
     }
+    #else
+    fatalError("not implemented")
+    #endif
   }
 
   /// Determine the rule kind for the declaration in the given statement, if any.

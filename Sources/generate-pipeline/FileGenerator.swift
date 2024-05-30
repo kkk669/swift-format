@@ -22,6 +22,7 @@ protocol FileGenerator {
 extension FileGenerator {
   /// Generates a file at the given URL, overwriting it if it already exists.
   func generateFile(at url: URL) throws {
+    #if !os(WASI)
     let fm = FileManager.default
     if fm.fileExists(atPath: url.path) {
       try fm.removeItem(at: url)
@@ -32,6 +33,9 @@ extension FileGenerator {
     defer { handle.closeFile() }
 
     try write(into: handle)
+    #else
+    fatalError("not implemented")
+    #endif
   }
 }
 

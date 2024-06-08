@@ -15,10 +15,10 @@ jobs:
       - name: Install tools
         run: apt-get update && apt-get install --no-install-recommends -y wabt binaryen
       - run: swift --version
-      - run: swift sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a-wasm32-unknown-wasi.artifactbundle.zip
+      - run: swift sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a-wasm32-unknown-wasip1-threads.artifactbundle.zip
       - name: Build
         run: |
-          swift build --product swift-format --swift-sdk wasm32-unknown-wasi -c release -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+          swift build --product swift-format --swift-sdk wasm32-unknown-wasip1-threads -c release -Xlinker -z -Xlinker stack-size=$STACK_SIZE
           wasm-strip .build/release/swift-format.wasm
           wasm-opt -Oz -all .build/release/swift-format.wasm -o swift-format.wasm
       - name: Upload artifacts
@@ -36,6 +36,6 @@ jobs:
       - uses: bytecodealliance/actions/wasmtime/setup@v1
       - run: swift --version
       - run: wasmtime -V
-      - run: swift sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a-wasm32-unknown-wasi.artifactbundle.zip
-      - run: swift build -c release --build-tests --swift-sdk wasm32-unknown-wasi -Xlinker -z -Xlinker stack-size=$STACK_SIZE
+      - run: swift sdk install https://github.com/swiftwasm/swift/releases/download/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a/swift-wasm-DEVELOPMENT-SNAPSHOT-2024-06-08-a-wasm32-unknown-wasip1-threads.artifactbundle.zip
+      - run: swift build -c release --build-tests --swift-sdk wasm32-unknown-wasip1-threads -Xlinker -z -Xlinker stack-size=$STACK_SIZE
       - run: wasmtime --dir / --wasm max-wasm-stack=$STACK_SIZE .build/release/swift-formatPackageTests.wasm

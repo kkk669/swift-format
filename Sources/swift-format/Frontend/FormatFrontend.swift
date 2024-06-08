@@ -59,7 +59,11 @@ class FormatFrontend: Frontend {
 
         if buffer != source {
           let bufferData = buffer.data(using: .utf8)!  // Conversion to UTF-8 cannot fail
-          try bufferData.write(to: url, options: .atomic)
+          #if !os(WASI)
+            try bufferData.write(to: url, options: .atomic)
+          #else
+            try bufferData.write(to: url)
+          #endif
         }
       } else {
         try formatter.format(

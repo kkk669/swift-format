@@ -162,7 +162,7 @@ var dependencies: [Package.Dependency] {
   } else {
     return [
       .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.2.2"),
-      .package(url: "https://github.com/kkebo/swift-markdown.git", branch: "wasm32-wasi"),
+      .package(url: "https://github.com/kkebo/swift-markdown.git", branch: "swift-markdown-wasm32-wasi-0.4"),
       .package(url: "https://github.com/apple/swift-syntax.git", branch: "main"),
     ]
   }
